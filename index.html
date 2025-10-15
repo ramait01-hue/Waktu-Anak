@@ -3,107 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pengelola Waktu Anak</title>
+    <title>Pengelola Waktu Anak - Realtime</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body class="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen p-4 pb-20">
     <div class="max-w-2xl mx-auto">
         <div class="text-center text-white mb-6 pt-2">
             <h1 class="text-3xl font-bold mb-2">⏰ Pengelola Waktu Anak</h1>
-            <p class="text-sm opacity-90">Data tersimpan otomatis di perangkat Anda</p>
+            <p class="text-sm opacity-90">🔄 Realtime - Sinkron otomatis di semua perangkat</p>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
-            <h2 class="text-lg font-semibold text-gray-800 mb-3">➕ Tambah Anak Baru</h2>
-            <div class="flex gap-2">
-                <input type="text" id="newChildName" placeholder="Nama anak..." 
-                    class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
-                <button onclick="app.addChild()" 
-                    class="bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition font-semibold">
-                    Tambah
+        <!-- Setup Firebase -->
+        <div id="setupSection" class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">🔑 Setup Firebase (Sekali Saja)</h2>
+            <p class="text-sm text-gray-600 mb-3">Masukkan konfigurasi Firebase Anda:</p>
+            
+            <div class="space-y-3">
+                <input type="text" id="apiKey" placeholder="API Key" 
+                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+                <input type="text" id="authDomain" placeholder="Auth Domain (contoh: xxx.firebaseapp.com)" 
+                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+                <input type="text" id="databaseURL" placeholder="Database URL (contoh: https://xxx.firebaseio.com)" 
+                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+                <input type="text" id="projectId" placeholder="Project ID" 
+                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+                
+                <button onclick="app.saveFirebaseConfig()" 
+                    class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-semibold">
+                    💾 Simpan & Mulai
                 </button>
+                
+                <details class="text-sm text-gray-600">
+                    <summary class="cursor-pointer font-semibold mb-2">📖 Cara mendapatkan Firebase Config</summary>
+                    <ol class="list-decimal ml-5 space-y-1 mt-2">
+                        <li>Buka <a href="https://console.firebase.google.com" target="_blank" class="text-blue-600">Firebase Console</a></li>
+                        <li>Buat project baru atau pilih project existing</li>
+                        <li>Klik ⚙️ Settings → Project settings</li>
+                        <li>Scroll ke bawah, pilih "Web app" (ikon &lt;/&gt;)</li>
+                        <li>Copy nilai dari firebaseConfig</li>
+                        <li>Di menu kiri, klik "Realtime Database"</li>
+                        <li>Klik "Create Database" → pilih lokasi → Start in "Test mode"</li>
+                        <li>Paste konfigurasi di form di atas</li>
+                    </ol>
+                </details>
             </div>
         </div>
 
-        <div id="childrenList"></div>
+        <!-- App Section (hidden until configured) -->
+        <div id="appSection" style="display: none;">
+            <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-semibold text-gray-800">➕ Tambah Anak Baru</h2>
+                    <span class="text-xs text-green-600 font-semibold" id="connectionStatus">🟢 Terhubung</span>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="newChildName" placeholder="Nama anak..." 
+                        class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
+                    <button onclick="app.addChild()" 
+                        class="bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition font-semibold">
+                        Tambah
+                    </button>
+                </div>
+            </div>
 
-        <div class="bg-white rounded-2xl shadow-lg p-5">
-            <h2 class="text-lg font-semibold text-gray-800 mb-3">💾 Backup & Restore</h2>
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="app.exportData()" 
-                    class="bg-blue-500 text-white py-3 rounded-xl hover:bg-blue-600 transition font-semibold">
-                    📤 Export
-                </button>
-                <button onclick="document.getElementById('importFile').click()" 
-                    class="bg-purple-500 text-white py-3 rounded-xl hover:bg-purple-600 transition font-semibold">
-                    📥 Import
+            <div id="childrenList"></div>
+
+            <div class="bg-white rounded-2xl shadow-lg p-5">
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">⚙️ Pengaturan</h2>
+                <button onclick="app.resetFirebaseConfig()" 
+                    class="w-full bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-semibold">
+                    🔄 Reset Konfigurasi Firebase
                 </button>
             </div>
-            <input type="file" id="importFile" accept=".json" onchange="app.importData(event)" class="hidden">
-            <p class="text-xs text-gray-500 text-center mt-3">Backup data Anda untuk keamanan</p>
-        </div>
 
-        <p class="text-center text-white text-sm mt-4 opacity-80">
-            💡 Data disimpan otomatis di browser perangkat Anda
-        </p>
+            <p class="text-center text-white text-sm mt-4 opacity-80">
+                🔄 Data otomatis tersinkron di semua perangkat
+            </p>
+        </div>
     </div>
 
     <script>
         const app = {
-            children: [],
+            db: null,
+            children: {},
+            firebaseInitialized: false,
 
             init() {
-                this.loadData();
+                const config = localStorage.getItem('firebaseConfig');
+                if (config) {
+                    try {
+                        const parsedConfig = JSON.parse(config);
+                        this.initFirebase(parsedConfig);
+                    } catch (e) {
+                        console.error('Error loading config:', e);
+                    }
+                }
+
                 document.getElementById('newChildName').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.addChild();
                 });
             },
 
-            loadData() {
-                const saved = localStorage.getItem('childrenTimeData');
-                if (saved) {
-                    try {
-                        this.children = JSON.parse(saved);
-                    } catch (e) {
-                        this.children = [];
-                    }
+            saveFirebaseConfig() {
+                const config = {
+                    apiKey: document.getElementById('apiKey').value.trim(),
+                    authDomain: document.getElementById('authDomain').value.trim(),
+                    databaseURL: document.getElementById('databaseURL').value.trim(),
+                    projectId: document.getElementById('projectId').value.trim()
+                };
+
+                if (!config.apiKey || !config.databaseURL) {
+                    alert('API Key dan Database URL harus diisi!');
+                    return;
                 }
-                this.render();
+
+                localStorage.setItem('firebaseConfig', JSON.stringify(config));
+                this.initFirebase(config);
             },
 
-            saveData() {
-                localStorage.setItem('childrenTimeData', JSON.stringify(this.children));
+            initFirebase(config) {
+                try {
+                    if (!this.firebaseInitialized) {
+                        firebase.initializeApp(config);
+                        this.firebaseInitialized = true;
+                    }
+                    
+                    this.db = firebase.database();
+                    
+                    document.getElementById('setupSection').style.display = 'none';
+                    document.getElementById('appSection').style.display = 'block';
+                    
+                    this.listenToChanges();
+                    
+                    this.db.ref('.info/connected').on('value', (snapshot) => {
+                        const status = document.getElementById('connectionStatus');
+                        if (snapshot.val() === true) {
+                            status.textContent = '🟢 Terhubung';
+                            status.className = 'text-xs text-green-600 font-semibold';
+                        } else {
+                            status.textContent = '🔴 Terputus';
+                            status.className = 'text-xs text-red-600 font-semibold';
+                        }
+                    });
+                } catch (e) {
+                    alert('Error inisialisasi Firebase: ' + e.message);
+                    this.resetFirebaseConfig();
+                }
+            },
+
+            resetFirebaseConfig() {
+                if (confirm('Reset konfigurasi Firebase? Anda perlu setup ulang.')) {
+                    localStorage.removeItem('firebaseConfig');
+                    location.reload();
+                }
+            },
+
+            listenToChanges() {
+                this.db.ref('children').on('value', (snapshot) => {
+                    this.children = snapshot.val() || {};
+                    this.render();
+                });
             },
 
             addChild() {
                 const input = document.getElementById('newChildName');
                 const name = input.value.trim();
-                if (name) {
-                    this.children.push({
-                        id: Date.now(),
-                        name: name,
-                        minutes: 0
-                    });
-                    input.value = '';
-                    this.saveData();
-                    this.render();
-                }
+                if (!name) return;
+
+                const newChild = {
+                    id: Date.now(),
+                    name: name,
+                    minutes: 0,
+                    createdAt: Date.now()
+                };
+
+                this.db.ref('children/' + newChild.id).set(newChild);
+                input.value = '';
             },
 
             removeChild(id) {
                 if (confirm('Yakin ingin menghapus data anak ini?')) {
-                    this.children = this.children.filter(c => c.id !== id);
-                    this.saveData();
-                    this.render();
+                    this.db.ref('children/' + id).remove();
                 }
             },
 
             updateTime(id, amount) {
-                const child = this.children.find(c => c.id === id);
+                const child = this.children[id];
                 if (child) {
-                    child.minutes = Math.max(0, child.minutes + amount);
-                    this.saveData();
-                    this.render();
+                    const newMinutes = Math.max(0, child.minutes + amount);
+                    this.db.ref('children/' + id + '/minutes').set(newMinutes);
                 }
             },
 
@@ -124,99 +214,70 @@
 
             render() {
                 const container = document.getElementById('childrenList');
+                const childrenArray = Object.values(this.children);
                 
-                if (this.children.length === 0) {
+                if (childrenArray.length === 0) {
                     container.innerHTML = '<div class="bg-white rounded-2xl shadow-lg p-8 text-center text-gray-400 mb-4">Belum ada data anak. Tambahkan anak baru di atas.</div>';
                     return;
                 }
 
-                container.innerHTML = this.children.map(child => `
-                    <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
-                        <div class="flex items-center justify-between mb-5">
-                            <h3 class="text-2xl font-bold text-gray-800">${child.name}</h3>
-                            ${this.children.length > 1 ? `
-                                <button onclick="app.removeChild(${child.id})" 
-                                    class="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition">
-                                    🗑️ Hapus
-                                </button>
-                            ` : ''}
-                        </div>
+                container.innerHTML = childrenArray.map(child => {
+                    const canDelete = childrenArray.length > 1;
+                    return `
+                        <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+                            <div class="flex items-center justify-between mb-5">
+                                <h3 class="text-2xl font-bold text-gray-800">${child.name}</h3>
+                                ${canDelete ? `
+                                    <button onclick="app.removeChild(${child.id})" 
+                                        class="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition">
+                                        🗑️ Hapus
+                                    </button>
+                                ` : ''}
+                            </div>
 
-                        <div class="text-center mb-6 p-5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl text-white">
-                            <div class="text-4xl font-bold mb-2">${this.formatTime(child.minutes)}</div>
-                            <div class="text-sm opacity-90">Total: ${child.minutes} menit</div>
-                        </div>
+                            <div class="text-center mb-6 p-5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl text-white">
+                                <div class="text-4xl font-bold mb-2">${this.formatTime(child.minutes)}</div>
+                                <div class="text-sm opacity-90">Total: ${child.minutes} menit</div>
+                            </div>
 
-                        <div class="mb-5">
-                            <p class="text-sm font-semibold text-gray-600 mb-2">➕ Tambah Waktu</p>
-                            <div class="grid grid-cols-3 gap-2">
-                                <button onclick="app.updateTime(${child.id}, 5)" 
-                                    class="bg-green-500 text-white py-3 rounded-xl hover:bg-green-600 transition font-bold text-lg">+5</button>
-                                <button onclick="app.updateTime(${child.id}, 15)" 
-                                    class="bg-green-500 text-white py-3 rounded-xl hover:bg-green-600 transition font-bold text-lg">+15</button>
-                                <button onclick="app.updateTime(${child.id}, 30)" 
-                                    class="bg-green-500 text-white py-3 rounded-xl hover:bg-green-600 transition font-bold text-lg">+30</button>
+                            <div class="mb-5">
+                                <p class="text-sm font-semibold text-gray-600 mb-2">➕ Tambah Waktu</p>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button onclick="app.updateTime(${child.id}, 5)" 
+                                        class="bg-green-500 text-white py-3 rounded-xl hover:bg-green-600 transition font-bold text-lg">+5</button>
+                                    <button onclick="app.updateTime(${child.id}, 15)" 
+                                        class="bg-green-500 text-white py-3 rounded-xl hover:bg-green-600 transition font-bold text-lg">+15</button>
+                                    <button onclick="app.updateTime(${child.id}, 30)" 
+                                        class="bg-green-500 text-white py-3 rounded-xl hover:bg-green-600 transition font-bold text-lg">+30</button>
+                                </div>
+                            </div>
+
+                            <div class="mb-5">
+                                <p class="text-sm font-semibold text-gray-600 mb-2">➖ Kurangi Waktu</p>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button onclick="app.updateTime(${child.id}, -5)" 
+                                        class="bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-bold text-lg">-5</button>
+                                    <button onclick="app.updateTime(${child.id}, -15)" 
+                                        class="bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-bold text-lg">-15</button>
+                                    <button onclick="app.updateTime(${child.id}, -30)" 
+                                        class="bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-bold text-lg">-30</button>
+                                </div>
+                            </div>
+
+                            <div class="pt-5 border-t-2 border-gray-100">
+                                <p class="text-sm font-semibold text-gray-600 mb-2">✏️ Input Manual (menit)</p>
+                                <div class="flex gap-2">
+                                    <input type="number" id="manual-${child.id}" placeholder="Jumlah menit..." min="0"
+                                        class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
+                                    <button onclick="app.updateManual(${child.id}, true)" 
+                                        class="bg-green-500 text-white px-5 py-3 rounded-xl hover:bg-green-600 transition font-semibold">+ Tambah</button>
+                                    <button onclick="app.updateManual(${child.id}, false)" 
+                                        class="bg-red-500 text-white px-5 py-3 rounded-xl hover:bg-red-600 transition font-semibold">- Kurangi</button>
+                                </div>
                             </div>
                         </div>
-
-                        <div class="mb-5">
-                            <p class="text-sm font-semibold text-gray-600 mb-2">➖ Kurangi Waktu</p>
-                            <div class="grid grid-cols-3 gap-2">
-                                <button onclick="app.updateTime(${child.id}, -5)" 
-                                    class="bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-bold text-lg">-5</button>
-                                <button onclick="app.updateTime(${child.id}, -15)" 
-                                    class="bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-bold text-lg">-15</button>
-                                <button onclick="app.updateTime(${child.id}, -30)" 
-                                    class="bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-bold text-lg">-30</button>
-                            </div>
-                        </div>
-
-                        <div class="pt-5 border-t-2 border-gray-100">
-                            <p class="text-sm font-semibold text-gray-600 mb-2">✏️ Input Manual (menit)</p>
-                            <div class="flex gap-2">
-                                <input type="number" id="manual-${child.id}" placeholder="Jumlah menit..." min="0"
-                                    class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
-                                <button onclick="app.updateManual(${child.id}, true)" 
-                                    class="bg-green-500 text-white px-5 py-3 rounded-xl hover:bg-green-600 transition font-semibold">+ Tambah</button>
-                                <button onclick="app.updateManual(${child.id}, false)" 
-                                    class="bg-red-500 text-white px-5 py-3 rounded-xl hover:bg-red-600 transition font-semibold">- Kurangi</button>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            },
-
-            exportData() {
-                const dataStr = JSON.stringify(this.children, null, 2);
-                const blob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'waktu-anak-backup-' + new Date().toISOString().split('T')[0] + '.json';
-                a.click();
-                URL.revokeObjectURL(url);
-            },
-
-            importData(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        if (confirm('Import data ini? Data saat ini akan ditimpa.')) {
-                            this.children = data;
-                            this.saveData();
-                            this.render();
-                            alert('Data berhasil di-import!');
-                        }
-                    } catch (error) {
-                        alert('File tidak valid!');
-                    }
-                };
-                reader.readAsText(file);
-                event.target.value = '';
+                    `;
+                }).join('');
             }
         };
 
