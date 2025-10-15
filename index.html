@@ -198,6 +198,24 @@
                 }
             },
 
+            updateMoney(id, amount) {
+                const child = this.children[id];
+                if (child) {
+                    const currentMoney = child.money || 0;
+                    const newMoney = Math.max(0, currentMoney + amount);
+                    this.db.ref('children/' + id + '/money').set(newMoney);
+                }
+            },
+
+            updateManualMoney(id, isAdd) {
+                const input = document.getElementById('manual-money-' + id);
+                const value = parseInt(input.value);
+                if (!isNaN(value) && value > 0) {
+                    this.updateMoney(id, isAdd ? value : -value);
+                    input.value = '';
+                }
+            },
+
             updateManual(id, isAdd) {
                 const input = document.getElementById('manual-' + id);
                 const value = parseInt(input.value);
@@ -213,6 +231,10 @@
                 return hours > 0 ? hours + ' jam ' + mins + ' menit' : mins + ' menit';
             },
 
+            formatMoney(amount) {
+                return 'Rp ' + amount.toLocaleString('id-ID');
+            },
+
             render() {
                 const container = document.getElementById('childrenList');
                 const childrenArray = Object.values(this.children);
@@ -224,6 +246,7 @@
 
                 container.innerHTML = childrenArray.map(child => {
                     const canDelete = childrenArray.length > 1;
+                    const currentMoney = child.money || 0;
                     return `
                         <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
                             <div class="flex items-center justify-between mb-5">
@@ -236,44 +259,85 @@
                                 ` : ''}
                             </div>
 
-                            <div class="text-center mb-6 p-5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl text-white">
-                                <div class="text-4xl font-bold mb-2">${this.formatTime(child.minutes)}</div>
-                                <div class="text-sm opacity-90">Total: ${child.minutes} menit</div>
-                            </div>
-
-                            <div class="mb-5">
-                                <p class="text-sm font-semibold text-gray-600 mb-2">➕ Tambah Waktu</p>
-                                <div class="grid grid-cols-3 gap-2">
-                                    <button onclick="app.updateTime(${child.id}, 5)" 
-                                        class="bg-green-500 text-white py-3 rounded-xl hover:bg-green-600 transition font-bold text-lg">+5</button>
-                                    <button onclick="app.updateTime(${child.id}, 15)" 
-                                        class="bg-green-500 text-white py-3 rounded-xl hover:bg-green-600 transition font-bold text-lg">+15</button>
-                                    <button onclick="app.updateTime(${child.id}, 30)" 
-                                        class="bg-green-500 text-white py-3 rounded-xl hover:bg-green-600 transition font-bold text-lg">+30</button>
+                            <div class="grid grid-cols-2 gap-3 mb-6">
+                                <div class="text-center p-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl text-white">
+                                    <div class="text-xs opacity-90 mb-1">⏰ Waktu</div>
+                                    <div class="text-2xl font-bold mb-1">${this.formatTime(child.minutes)}</div>
+                                    <div class="text-xs opacity-80">${child.minutes} menit</div>
+                                </div>
+                                <div class="text-center p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl text-white">
+                                    <div class="text-xs opacity-90 mb-1">💰 Uang Jajan</div>
+                                    <div class="text-2xl font-bold mb-1">${this.formatMoney(currentMoney)}</div>
+                                    <div class="text-xs opacity-80">Saldo</div>
                                 </div>
                             </div>
 
                             <div class="mb-5">
-                                <p class="text-sm font-semibold text-gray-600 mb-2">➖ Kurangi Waktu</p>
+                                <p class="text-sm font-semibold text-gray-600 mb-2">⏰ Kelola Waktu</p>
+                                <div class="grid grid-cols-3 gap-2 mb-2">
+                                    <button onclick="app.updateTime(${child.id}, 5)" 
+                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold">+5</button>
+                                    <button onclick="app.updateTime(${child.id}, 15)" 
+                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold">+15</button>
+                                    <button onclick="app.updateTime(${child.id}, 30)" 
+                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold">+30</button>
+                                </div>
                                 <div class="grid grid-cols-3 gap-2">
                                     <button onclick="app.updateTime(${child.id}, -5)" 
-                                        class="bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-bold text-lg">-5</button>
+                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold">-5</button>
                                     <button onclick="app.updateTime(${child.id}, -15)" 
-                                        class="bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-bold text-lg">-15</button>
+                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold">-15</button>
                                     <button onclick="app.updateTime(${child.id}, -30)" 
-                                        class="bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-bold text-lg">-30</button>
+                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold">-30</button>
                                 </div>
                             </div>
 
-                            <div class="pt-5 border-t-2 border-gray-100">
-                                <p class="text-sm font-semibold text-gray-600 mb-2">✏️ Input Manual (menit)</p>
-                                <div class="flex gap-2">
-                                    <input type="number" id="manual-${child.id}" placeholder="Jumlah menit..." min="0"
-                                        class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
-                                    <button onclick="app.updateManual(${child.id}, true)" 
-                                        class="bg-green-500 text-white px-5 py-3 rounded-xl hover:bg-green-600 transition font-semibold">+ Tambah</button>
-                                    <button onclick="app.updateManual(${child.id}, false)" 
-                                        class="bg-red-500 text-white px-5 py-3 rounded-xl hover:bg-red-600 transition font-semibold">- Kurangi</button>
+                            <div class="mb-5">
+                                <p class="text-sm font-semibold text-gray-600 mb-2">💰 Kelola Uang Jajan</p>
+                                <div class="grid grid-cols-4 gap-2 mb-2">
+                                    <button onclick="app.updateMoney(${child.id}, 1000)" 
+                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold text-sm">+1K</button>
+                                    <button onclick="app.updateMoney(${child.id}, 5000)" 
+                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold text-sm">+5K</button>
+                                    <button onclick="app.updateMoney(${child.id}, 10000)" 
+                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold text-sm">+10K</button>
+                                    <button onclick="app.updateMoney(${child.id}, 20000)" 
+                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold text-sm">+20K</button>
+                                </div>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <button onclick="app.updateMoney(${child.id}, -1000)" 
+                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold text-sm">-1K</button>
+                                    <button onclick="app.updateMoney(${child.id}, -5000)" 
+                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold text-sm">-5K</button>
+                                    <button onclick="app.updateMoney(${child.id}, -10000)" 
+                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold text-sm">-10K</button>
+                                    <button onclick="app.updateMoney(${child.id}, -20000)" 
+                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold text-sm">-20K</button>
+                                </div>
+                            </div>
+
+                            <div class="pt-5 border-t-2 border-gray-100 space-y-3">
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-600 mb-2">✏️ Input Waktu Manual (menit)</p>
+                                    <div class="flex gap-2">
+                                        <input type="number" id="manual-${child.id}" placeholder="Jumlah menit..." min="0"
+                                            class="flex-1 px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+                                        <button onclick="app.updateManual(${child.id}, true)" 
+                                            class="bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 transition font-semibold text-sm">+</button>
+                                        <button onclick="app.updateManual(${child.id}, false)" 
+                                            class="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition font-semibold text-sm">-</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-600 mb-2">✏️ Input Uang Manual (Rp)</p>
+                                    <div class="flex gap-2">
+                                        <input type="number" id="manual-money-${child.id}" placeholder="Jumlah rupiah..." min="0"
+                                            class="flex-1 px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+                                        <button onclick="app.updateManualMoney(${child.id}, true)" 
+                                            class="bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 transition font-semibold text-sm">+</button>
+                                        <button onclick="app.updateManualMoney(${child.id}, false)" 
+                                            class="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition font-semibold text-sm">-</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
