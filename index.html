@@ -3,84 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pengelola Waktu Anak - Realtime</title>
+    <title>Pengelola Waktu Anak - Complete</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body class="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen p-4 pb-20">
-    <div class="max-w-2xl mx-auto">
+    <div class="max-w-4xl mx-auto">
         <div class="text-center text-white mb-6 pt-2">
             <h1 class="text-3xl font-bold mb-2">⏰ Pengelola Waktu Anak</h1>
-            <p class="text-sm opacity-90">🔄 Realtime - Sinkron otomatis di semua perangkat</p>
+            <p class="text-sm opacity-90">🔄 Complete Edition - Realtime Sync</p>
         </div>
 
         <!-- Setup Firebase -->
         <div id="setupSection" class="bg-white rounded-2xl shadow-lg p-5 mb-4">
-            <h2 class="text-lg font-semibold text-gray-800 mb-3">🔑 Setup Firebase (Sekali Saja)</h2>
-            <p class="text-sm text-gray-600 mb-3">Masukkan konfigurasi Firebase Anda:</p>
-            
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">🔑 Setup Firebase</h2>
             <div class="space-y-3">
                 <input type="text" id="apiKey" placeholder="API Key" 
                     class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
-                <input type="text" id="authDomain" placeholder="Auth Domain (contoh: xxx.firebaseapp.com)" 
+                <input type="text" id="authDomain" placeholder="Auth Domain" 
                     class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
-                <input type="text" id="databaseURL" placeholder="Database URL (contoh: https://xxx.firebaseio.com)" 
+                <input type="text" id="databaseURL" placeholder="Database URL" 
                     class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
                 <input type="text" id="projectId" placeholder="Project ID" 
                     class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
-                
                 <button onclick="app.saveFirebaseConfig()" 
                     class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-semibold">
                     💾 Simpan & Mulai
                 </button>
-                
-                <details class="text-sm text-gray-600">
-                    <summary class="cursor-pointer font-semibold mb-2">📖 Cara mendapatkan Firebase Config</summary>
-                    <ol class="list-decimal ml-5 space-y-1 mt-2">
-                        <li>Buka <a href="https://console.firebase.google.com" target="_blank" class="text-blue-600">Firebase Console</a></li>
-                        <li>Buat project baru atau pilih project existing</li>
-                        <li>Klik ⚙️ Settings → Project settings</li>
-                        <li>Scroll ke bawah, pilih "Web app" (ikon &lt;/&gt;)</li>
-                        <li>Copy nilai dari firebaseConfig</li>
-                        <li>Di menu kiri, klik "Realtime Database"</li>
-                        <li>Klik "Create Database" → pilih lokasi → Start in "Test mode"</li>
-                        <li>Paste konfigurasi di form di atas</li>
-                    </ol>
-                </details>
             </div>
         </div>
 
-        <!-- App Section (hidden until configured) -->
-        <div id="appSection" style="display: none;">
-            <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-lg font-semibold text-gray-800">➕ Tambah Anak Baru</h2>
-                    <span class="text-xs text-green-600 font-semibold" id="connectionStatus">🟢 Terhubung</span>
-                </div>
-                <div class="flex gap-2">
-                    <input type="text" id="newChildName" placeholder="Nama anak..." 
-                        class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
-                    <button onclick="app.addChild()" 
-                        class="bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition font-semibold">
-                        Tambah
-                    </button>
-                </div>
+        <!-- PIN Setup -->
+        <div id="pinSetupSection" style="display: none;" class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">🔐 Buat PIN Orang Tua</h2>
+            <p class="text-sm text-gray-600 mb-3">PIN untuk proteksi agar anak tidak bisa ubah data sendiri</p>
+            <div class="space-y-3">
+                <input type="password" id="newPin" placeholder="Buat PIN (4-6 digit)" maxlength="6"
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
+                <input type="password" id="confirmPin" placeholder="Konfirmasi PIN" maxlength="6"
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
+                <button onclick="app.setupPin()" 
+                    class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-semibold">
+                    ✅ Buat PIN
+                </button>
+                <button onclick="app.skipPin()" 
+                    class="w-full bg-gray-400 text-white py-2 rounded-xl hover:bg-gray-500 transition text-sm">
+                    Skip (Tidak Pakai PIN)
+                </button>
             </div>
+        </div>
 
-            <div id="childrenList"></div>
+        <!-- PIN Lock -->
+        <div id="pinLockSection" style="display: none;" class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3 text-center">🔒 Masukkan PIN Orang Tua</h2>
+            <div class="space-y-3">
+                <input type="password" id="enterPin" placeholder="Masukkan PIN" maxlength="6"
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base text-center text-2xl focus:outline-none focus:border-indigo-500">
+                <button onclick="app.verifyPin()" 
+                    class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-semibold">
+                    🔓 Buka
+                </button>
+            </div>
+        </div>
 
-            <div class="bg-white rounded-2xl shadow-lg p-5">
-                <h2 class="text-lg font-semibold text-gray-800 mb-3">⚙️ Pengaturan</h2>
-                <button onclick="app.resetFirebaseConfig()" 
-                    class="w-full bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-semibold">
-                    🔄 Reset Konfigurasi Firebase
+        <!-- Main App -->
+        <div id="appSection" style="display: none;">
+            <!-- Navigation Tabs -->
+            <div class="bg-white rounded-2xl shadow-lg p-2 mb-4 flex gap-2">
+                <button onclick="app.switchTab('dashboard')" id="tab-dashboard"
+                    class="flex-1 py-3 rounded-xl font-semibold transition bg-indigo-600 text-white">
+                    📊 Dashboard
+                </button>
+                <button onclick="app.switchTab('manage')" id="tab-manage"
+                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100">
+                    ⚙️ Kelola
+                </button>
+                <button onclick="app.switchTab('history')" id="tab-history"
+                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100">
+                    📜 Riwayat
+                </button>
+                <button onclick="app.switchTab('settings')" id="tab-settings"
+                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100">
+                    ⚙️ Pengaturan
                 </button>
             </div>
 
-            <p class="text-center text-white text-sm mt-4 opacity-80">
-                🔄 Data otomatis tersinkron di semua perangkat
-            </p>
+            <!-- Dashboard Tab -->
+            <div id="content-dashboard">
+                <div id="dashboardContent"></div>
+            </div>
+
+            <!-- Manage Tab -->
+            <div id="content-manage" style="display: none;">
+                <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-3">➕ Tambah Anak Baru</h2>
+                    <div class="space-y-3">
+                        <input type="text" id="newChildName" placeholder="Nama anak..." 
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
+                        <input type="color" id="newChildColor" value="#667eea"
+                            class="w-full h-12 border-2 border-gray-200 rounded-xl cursor-pointer">
+                        <label class="text-sm text-gray-600">Pilih warna tema untuk anak ini</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-sm text-gray-600 block mb-1">Target Waktu Harian (menit)</label>
+                                <input type="number" id="newChildTarget" value="60" min="0"
+                                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-600 block mb-1">Reward per Target (Rp)</label>
+                                <input type="number" id="newChildReward" value="5000" min="0" step="1000"
+                                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+                        <button onclick="app.addChild()" 
+                            class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-semibold">
+                            Tambah Anak
+                        </button>
+                    </div>
+                </div>
+
+                <div id="childrenManageList"></div>
+            </div>
+
+            <!-- History Tab -->
+            <div id="content-history" style="display: none;">
+                <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-lg font-semibold text-gray-800">📜 Riwayat Transaksi</h2>
+                        <button onclick="app.clearHistory()" class="text-sm text-red-600 hover:text-red-700">
+                            🗑️ Hapus Semua
+                        </button>
+                    </div>
+                    <div id="historyList"></div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="content-settings" style="display: none;">
+                <div class="space-y-4">
+                    <div class="bg-white rounded-2xl shadow-lg p-5">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-3">🔐 Keamanan</h2>
+                        <button onclick="app.changePin()" 
+                            class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-semibold mb-2">
+                            🔑 Ubah PIN
+                        </button>
+                        <button onclick="app.lockApp()" 
+                            class="w-full bg-yellow-500 text-white py-3 rounded-xl hover:bg-yellow-600 transition font-semibold">
+                            🔒 Kunci Aplikasi
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-5">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-3">📊 Data</h2>
+                        <button onclick="app.exportAllData()" 
+                            class="w-full bg-blue-500 text-white py-3 rounded-xl hover:bg-blue-600 transition font-semibold mb-2">
+                            📤 Export Semua Data
+                        </button>
+                        <button onclick="app.resetAllData()" 
+                            class="w-full bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition font-semibold">
+                            🔄 Reset Semua Data
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-5">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-3">ℹ️ Info</h2>
+                        <p class="text-sm text-gray-600 mb-2">🔄 Status: <span id="connectionStatus" class="text-green-600 font-semibold">Terhubung</span></p>
+                        <button onclick="app.resetFirebaseConfig()" 
+                            class="w-full bg-gray-500 text-white py-3 rounded-xl hover:bg-gray-600 transition font-semibold">
+                            🔄 Ganti Firebase Config
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal untuk detail anak -->
+        <div id="childDetailModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div id="modalContent"></div>
+            </div>
         </div>
     </div>
 
@@ -88,7 +191,11 @@
         const app = {
             db: null,
             children: {},
+            history: [],
+            settings: {},
+            currentTab: 'dashboard',
             firebaseInitialized: false,
+            isLocked: false,
 
             init() {
                 const config = localStorage.getItem('firebaseConfig');
@@ -99,11 +206,9 @@
                     } catch (e) {
                         console.error('Error loading config:', e);
                     }
+                } else {
+                    document.getElementById('setupSection').style.display = 'block';
                 }
-
-                document.getElementById('newChildName').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.addChild();
-                });
             },
 
             saveFirebaseConfig() {
@@ -133,24 +238,711 @@
                     this.db = firebase.database();
                     
                     document.getElementById('setupSection').style.display = 'none';
-                    document.getElementById('appSection').style.display = 'block';
+                    
+                    // Check if PIN exists
+                    this.db.ref('settings/pin').once('value', (snapshot) => {
+                        if (snapshot.exists()) {
+                            this.settings.pin = snapshot.val();
+                            this.showPinLock();
+                        } else {
+                            document.getElementById('pinSetupSection').style.display = 'block';
+                        }
+                    });
                     
                     this.listenToChanges();
                     
                     this.db.ref('.info/connected').on('value', (snapshot) => {
                         const status = document.getElementById('connectionStatus');
-                        if (snapshot.val() === true) {
-                            status.textContent = '🟢 Terhubung';
-                            status.className = 'text-xs text-green-600 font-semibold';
-                        } else {
-                            status.textContent = '🔴 Terputus';
-                            status.className = 'text-xs text-red-600 font-semibold';
+                        if (status) {
+                            if (snapshot.val() === true) {
+                                status.textContent = 'Terhubung';
+                                status.className = 'text-green-600 font-semibold';
+                            } else {
+                                status.textContent = 'Terputus';
+                                status.className = 'text-red-600 font-semibold';
+                            }
                         }
                     });
                 } catch (e) {
                     alert('Error inisialisasi Firebase: ' + e.message);
-                    this.resetFirebaseConfig();
                 }
+            },
+
+            setupPin() {
+                const pin = document.getElementById('newPin').value;
+                const confirm = document.getElementById('confirmPin').value;
+
+                if (pin.length < 4) {
+                    alert('PIN minimal 4 digit!');
+                    return;
+                }
+
+                if (pin !== confirm) {
+                    alert('PIN tidak cocok!');
+                    return;
+                }
+
+                this.db.ref('settings/pin').set(pin);
+                this.settings.pin = pin;
+                document.getElementById('pinSetupSection').style.display = 'none';
+                this.showApp();
+            },
+
+            skipPin() {
+                if (confirm('Yakin tidak pakai PIN? Anak bisa ubah data sendiri.')) {
+                    document.getElementById('pinSetupSection').style.display = 'none';
+                    this.showApp();
+                }
+            },
+
+            showPinLock() {
+                this.isLocked = true;
+                document.getElementById('pinLockSection').style.display = 'block';
+                document.getElementById('appSection').style.display = 'none';
+            },
+
+            verifyPin() {
+                const entered = document.getElementById('enterPin').value;
+                if (entered === this.settings.pin) {
+                    this.isLocked = false;
+                    document.getElementById('pinLockSection').style.display = 'none';
+                    this.showApp();
+                } else {
+                    alert('PIN salah!');
+                    document.getElementById('enterPin').value = '';
+                }
+            },
+
+            lockApp() {
+                if (this.settings.pin) {
+                    this.showPinLock();
+                } else {
+                    alert('PIN belum diatur!');
+                }
+            },
+
+            changePin() {
+                if (this.settings.pin) {
+                    const oldPin = prompt('Masukkan PIN lama:');
+                    if (oldPin !== this.settings.pin) {
+                        alert('PIN lama salah!');
+                        return;
+                    }
+                }
+                
+                const newPin = prompt('Masukkan PIN baru (4-6 digit):');
+                if (newPin && newPin.length >= 4) {
+                    const confirm = prompt('Konfirmasi PIN baru:');
+                    if (newPin === confirm) {
+                        this.db.ref('settings/pin').set(newPin);
+                        this.settings.pin = newPin;
+                        alert('PIN berhasil diubah!');
+                    } else {
+                        alert('PIN tidak cocok!');
+                    }
+                }
+            },
+
+            showApp() {
+                document.getElementById('appSection').style.display = 'block';
+                this.switchTab('dashboard');
+            },
+
+            listenToChanges() {
+                this.db.ref('children').on('value', (snapshot) => {
+                    this.children = snapshot.val() || {};
+                    this.renderCurrentTab();
+                });
+
+                this.db.ref('history').limitToLast(100).on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    this.history = data ? Object.values(data).reverse() : [];
+                    if (this.currentTab === 'history') {
+                        this.renderHistory();
+                    }
+                });
+
+                this.db.ref('settings').on('value', (snapshot) => {
+                    this.settings = snapshot.val() || {};
+                });
+            },
+
+            switchTab(tab) {
+                this.currentTab = tab;
+                
+                ['dashboard', 'manage', 'history', 'settings'].forEach(t => {
+                    document.getElementById('content-' + t).style.display = 'none';
+                    const btn = document.getElementById('tab-' + t);
+                    if (btn) {
+                        btn.className = 'flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100';
+                    }
+                });
+                
+                document.getElementById('content-' + tab).style.display = 'block';
+                const activeBtn = document.getElementById('tab-' + tab);
+                if (activeBtn) {
+                    activeBtn.className = 'flex-1 py-3 rounded-xl font-semibold transition bg-indigo-600 text-white';
+                }
+                
+                this.renderCurrentTab();
+            },
+
+            renderCurrentTab() {
+                switch(this.currentTab) {
+                    case 'dashboard':
+                        this.renderDashboard();
+                        break;
+                    case 'manage':
+                        this.renderManage();
+                        break;
+                    case 'history':
+                        this.renderHistory();
+                        break;
+                }
+            },
+
+            addChild() {
+                const name = document.getElementById('newChildName').value.trim();
+                const color = document.getElementById('newChildColor').value;
+                const target = parseInt(document.getElementById('newChildTarget').value) || 60;
+                const reward = parseInt(document.getElementById('newChildReward').value) || 5000;
+
+                if (!name) {
+                    alert('Nama anak harus diisi!');
+                    return;
+                }
+
+                const newChild = {
+                    id: Date.now(),
+                    name: name,
+                    color: color,
+                    minutes: 0,
+                    money: 0,
+                    dailyTarget: target,
+                    rewardAmount: reward,
+                    badges: [],
+                    expenses: [],
+                    createdAt: Date.now()
+                };
+
+                this.db.ref('children/' + newChild.id).set(newChild);
+                this.addHistory('Anak baru ditambahkan: ' + name, 'add_child', newChild.id);
+                
+                document.getElementById('newChildName').value = '';
+                document.getElementById('newChildColor').value = '#667eea';
+                document.getElementById('newChildTarget').value = '60';
+                document.getElementById('newChildReward').value = '5000';
+
+                alert('Anak berhasil ditambahkan!');
+            },
+
+            removeChild(id) {
+                const child = this.children[id];
+                if (confirm('Yakin ingin menghapus ' + child.name + '?')) {
+                    this.db.ref('children/' + id).remove();
+                    this.addHistory('Anak dihapus: ' + child.name, 'remove_child', id);
+                }
+            },
+
+            updateTime(id, amount, description) {
+                const child = this.children[id];
+                if (child) {
+                    const newMinutes = Math.max(0, child.minutes + amount);
+                    this.db.ref('children/' + id + '/minutes').set(newMinutes);
+                    
+                    const desc = description || (amount > 0 ? 'Tambah ' + amount + ' menit' : 'Kurangi ' + Math.abs(amount) + ' menit');
+                    this.addHistory(child.name + ': ' + desc, 'time', id, amount);
+                    
+                    // Check achievement
+                    this.checkDailyTarget(id);
+                }
+            },
+
+            updateMoney(id, amount, category, description) {
+                const child = this.children[id];
+                if (child) {
+                    const currentMoney = child.money || 0;
+                    const newMoney = Math.max(0, currentMoney + amount);
+                    this.db.ref('children/' + id + '/money').set(newMoney);
+                    
+                    const desc = description || (amount > 0 ? 'Tambah Rp ' + amount.toLocaleString('id-ID') : 'Kurangi Rp ' + Math.abs(amount).toLocaleString('id-ID'));
+                    this.addHistory(child.name + ': ' + desc, 'money', id, amount);
+                    
+                    // Track expense if spending
+                    if (amount < 0 && category) {
+                        this.addExpense(id, Math.abs(amount), category, description);
+                    }
+                }
+            },
+
+            addExpense(childId, amount, category, note) {
+                const child = this.children[childId];
+                if (child) {
+                    const expenses = child.expenses || [];
+                    expenses.push({
+                        amount: amount,
+                        category: category,
+                        note: note || '',
+                        date: Date.now()
+                    });
+                    this.db.ref('children/' + childId + '/expenses').set(expenses);
+                }
+            },
+
+            checkDailyTarget(id) {
+                const child = this.children[id];
+                const target = child.dailyTarget || 60;
+                
+                if (child.minutes >= target && child.minutes - target < 30) {
+                    const reward = child.rewardAmount || 5000;
+                    this.updateMoney(id, reward, 'reward', 'Bonus target harian!');
+                    this.addBadge(id, '🎯 Target Harian');
+                    alert('🎉 ' + child.name + ' mencapai target! Bonus Rp ' + reward.toLocaleString('id-ID'));
+                }
+            },
+
+            addBadge(childId, badgeName) {
+                const child = this.children[childId];
+                if (child) {
+                    const badges = child.badges || [];
+                    if (!badges.includes(badgeName)) {
+                        badges.push(badgeName);
+                        this.db.ref('children/' + childId + '/badges').set(badges);
+                    }
+                }
+            },
+
+            addHistory(description, type, childId, amount) {
+                const historyItem = {
+                    id: Date.now(),
+                    description: description,
+                    type: type,
+                    childId: childId || null,
+                    amount: amount || 0,
+                    timestamp: Date.now()
+                };
+                this.db.ref('history/' + historyItem.id).set(historyItem);
+            },
+
+            clearHistory() {
+                if (confirm('Hapus semua riwayat?')) {
+                    this.db.ref('history').remove();
+                    alert('Riwayat dihapus!');
+                }
+            },
+
+            undoLastAction() {
+                if (this.history.length === 0) {
+                    alert('Tidak ada transaksi untuk di-undo');
+                    return;
+                }
+
+                const last = this.history[0];
+                if (confirm('Undo: ' + last.description + '?')) {
+                    const child = this.children[last.childId];
+                    if (child && last.type === 'time') {
+                        this.updateTime(last.childId, -last.amount, 'Undo: ' + last.description);
+                    } else if (child && last.type === 'money') {
+                        this.updateMoney(last.childId, -last.amount, null, 'Undo: ' + last.description);
+                    }
+                }
+            },
+
+            showChildDetail(id) {
+                const child = this.children[id];
+                if (!child) return;
+
+                const modal = document.getElementById('childDetailModal');
+                const content = document.getElementById('modalContent');
+                
+                const expenses = child.expenses || [];
+                const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+                content.innerHTML = `
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold" style="color: ${child.color}">${child.name}</h2>
+                            <button onclick="app.closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="p-4 rounded-xl text-center" style="background: ${child.color}20; color: ${child.color}">
+                                <div class="text-sm opacity-80">Waktu Total</div>
+                                <div class="text-2xl font-bold">${this.formatTime(child.minutes)}</div>
+                            </div>
+                            <div class="p-4 bg-green-50 rounded-xl text-center text-green-700">
+                                <div class="text-sm opacity-80">Saldo</div>
+                                <div class="text-2xl font-bold">${this.formatMoney(child.money || 0)}</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="font-semibold mb-2">🎯 Target Harian: ${child.dailyTarget || 60} menit</h3>
+                            <div class="w-full bg-gray-200 rounded-full h-4">
+                                <div class="bg-green-500 h-4 rounded-full" style="width: ${Math.min(100, (child.minutes / (child.dailyTarget || 60)) * 100)}%"></div>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">${Math.floor((child.minutes / (child.dailyTarget || 60)) * 100)}% tercapai</p>
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="font-semibold mb-2">🏆 Badges</h3>
+                            <div class="flex flex-wrap gap-2">
+                                ${(child.badges || []).map(badge => `<span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">${badge}</span>`).join('') || '<span class="text-gray-400 text-sm">Belum ada badge</span>'}
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="font-semibold mb-2">💳 Pengeluaran (Total: ${this.formatMoney(totalSpent)})</h3>
+                            <div class="space-y-2 max-h-48 overflow-y-auto">
+                                ${expenses.slice(-10).reverse().map(exp => `
+                                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg text-sm">
+                                        <div>
+                                            <div class="font-semibold">${exp.category}</div>
+                                            <div class="text-gray-600 text-xs">${exp.note}</div>
+                                        </div>
+                                        <div class="text-red-600 font-bold">-${this.formatMoney(exp.amount)}</div>
+                                    </div>
+                                `).join('') || '<p class="text-gray-400 text-sm">Belum ada pengeluaran</p>'}
+                            </div>
+                        </div>
+
+                                                    <div class="space-y-3">
+                            <h3 class="font-semibold">⚙️ Kelola ${child.name}</h3>
+                            
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="app.showAddTimeForm(${id})" class="bg-green-500 text-white py-2 rounded-lg hover:bg-green-600">
+                                    ➕ Tambah Waktu
+                                </button>
+                                <button onclick="app.showAddMoneyForm(${id})" class="bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600">
+                                    💰 Tambah Uang
+                                </button>
+                                <button onclick="app.showSpendMoneyForm(${id})" class="bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">
+                                    💸 Belanja
+                                </button>
+                                <button onclick="app.resetDailyTime(${id})" class="bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600">
+                                    🔄 Reset Waktu
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                modal.style.display = 'flex';
+            },
+
+            closeModal() {
+                document.getElementById('childDetailModal').style.display = 'none';
+            },
+
+            showAddTimeForm(id) {
+                const minutes = prompt('Tambah berapa menit?');
+                if (minutes && !isNaN(minutes)) {
+                    this.updateTime(id, parseInt(minutes));
+                    this.closeModal();
+                    setTimeout(() => this.showChildDetail(id), 100);
+                }
+            },
+
+            showAddMoneyForm(id) {
+                const amount = prompt('Tambah berapa rupiah?');
+                if (amount && !isNaN(amount)) {
+                    const note = prompt('Catatan (opsional):') || 'Deposit';
+                    this.updateMoney(id, parseInt(amount), 'deposit', note);
+                    this.closeModal();
+                    setTimeout(() => this.showChildDetail(id), 100);
+                }
+            },
+
+            showSpendMoneyForm(id) {
+                const child = this.children[id];
+                const amount = prompt('Belanja berapa rupiah?');
+                if (amount && !isNaN(amount)) {
+                    const intAmount = parseInt(amount);
+                    if (intAmount > (child.money || 0)) {
+                        alert('Saldo tidak cukup!');
+                        return;
+                    }
+                    const category = prompt('Kategori (jajan/mainan/buku/lainnya):') || 'lainnya';
+                    const note = prompt('Untuk beli apa?') || '';
+                    this.updateMoney(id, -intAmount, category, note);
+                    this.closeModal();
+                    setTimeout(() => this.showChildDetail(id), 100);
+                }
+            },
+
+            resetDailyTime(id) {
+                const child = this.children[id];
+                if (confirm('Reset waktu ' + child.name + ' ke 0?')) {
+                    this.db.ref('children/' + id + '/minutes').set(0);
+                    this.addHistory(child.name + ': Reset waktu harian', 'reset', id);
+                    this.closeModal();
+                }
+            },
+
+            formatTime(minutes) {
+                const hours = Math.floor(minutes / 60);
+                const mins = minutes % 60;
+                return hours > 0 ? hours + 'j ' + mins + 'm' : mins + 'm';
+            },
+
+            formatMoney(amount) {
+                return 'Rp ' + amount.toLocaleString('id-ID');
+            },
+
+            formatDate(timestamp) {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diff = now - date;
+                
+                if (diff < 60000) return 'Baru saja';
+                if (diff < 3600000) return Math.floor(diff / 60000) + ' menit lalu';
+                if (diff < 86400000) return Math.floor(diff / 3600000) + ' jam lalu';
+                
+                return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            },
+
+            renderDashboard() {
+                const container = document.getElementById('dashboardContent');
+                const childrenArray = Object.values(this.children);
+                
+                if (childrenArray.length === 0) {
+                    container.innerHTML = `
+                        <div class="bg-white rounded-2xl shadow-lg p-8 text-center text-gray-400">
+                            <p class="text-xl mb-4">👶 Belum ada data anak</p>
+                            <button onclick="app.switchTab('manage')" class="bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 font-semibold">
+                                ➕ Tambah Anak Pertama
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const totalTime = childrenArray.reduce((sum, c) => sum + (c.minutes || 0), 0);
+                const totalMoney = childrenArray.reduce((sum, c) => sum + (c.money || 0), 0);
+
+                container.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="bg-white rounded-2xl shadow-lg p-5 text-center">
+                            <div class="text-3xl mb-2">⏰</div>
+                            <div class="text-2xl font-bold text-indigo-600">${this.formatTime(totalTime)}</div>
+                            <div class="text-sm text-gray-600">Total Waktu</div>
+                        </div>
+                        <div class="bg-white rounded-2xl shadow-lg p-5 text-center">
+                            <div class="text-3xl mb-2">💰</div>
+                            <div class="text-2xl font-bold text-green-600">${this.formatMoney(totalMoney)}</div>
+                            <div class="text-sm text-gray-600">Total Saldo</div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        ${childrenArray.map(child => {
+                            const progress = Math.min(100, ((child.minutes || 0) / (child.dailyTarget || 60)) * 100);
+                            return `
+                                <div class="bg-white rounded-2xl shadow-lg p-5 cursor-pointer hover:shadow-xl transition" onclick="app.showChildDetail(${child.id})">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style="background: ${child.color}20;">
+                                                👶
+                                            </div>
+                                            <div>
+                                                <h3 class="text-xl font-bold" style="color: ${child.color}">${child.name}</h3>
+                                                <p class="text-xs text-gray-500">Target: ${child.dailyTarget || 60} menit/hari</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-lg font-bold text-indigo-600">${this.formatTime(child.minutes || 0)}</div>
+                                            <div class="text-sm font-semibold text-green-600">${this.formatMoney(child.money || 0)}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                        <div class="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all" style="width: ${progress}%"></div>
+                                    </div>
+                                    <p class="text-xs text-gray-600">${Math.floor(progress)}% dari target harian</p>
+
+                                    ${(child.badges || []).length > 0 ? `
+                                        <div class="mt-3 flex gap-1 flex-wrap">
+                                            ${(child.badges || []).slice(0, 3).map(badge => `
+                                                <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">${badge}</span>
+                                            `).join('')}
+                                            ${(child.badges || []).length > 3 ? `<span class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">+${(child.badges || []).length - 3}</span>` : ''}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-5 mt-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-semibold text-gray-800">📜 Aktivitas Terbaru</h3>
+                            <button onclick="app.switchTab('history')" class="text-sm text-indigo-600 hover:text-indigo-700">
+                                Lihat Semua →
+                            </button>
+                        </div>
+                        <div class="space-y-2">
+                            ${this.history.slice(0, 5).map(h => {
+                                const child = this.children[h.childId];
+                                const childName = child ? child.name : 'Unknown';
+                                return `
+                                    <div class="flex justify-between items-center text-sm p-2 bg-gray-50 rounded-lg">
+                                        <span class="text-gray-700">${h.description}</span>
+                                        <span class="text-gray-400 text-xs">${this.formatDate(h.timestamp)}</span>
+                                    </div>
+                                `;
+                            }).join('') || '<p class="text-gray-400 text-sm text-center py-4">Belum ada aktivitas</p>'}
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderManage() {
+                const container = document.getElementById('childrenManageList');
+                const childrenArray = Object.values(this.children);
+                
+                if (childrenArray.length === 0) {
+                    container.innerHTML = '<div class="bg-white rounded-2xl shadow-lg p-8 text-center text-gray-400">Tambahkan anak pertama di atas</div>';
+                    return;
+                }
+
+                container.innerHTML = childrenArray.map(child => `
+                    <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold" style="color: ${child.color}">${child.name}</h3>
+                            <button onclick="app.removeChild(${child.id})" class="text-red-500 hover:text-red-700">
+                                🗑️ Hapus
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div class="p-3 rounded-xl text-center" style="background: ${child.color}20; color: ${child.color}">
+                                <div class="text-xs opacity-80">Waktu</div>
+                                <div class="text-xl font-bold">${this.formatTime(child.minutes || 0)}</div>
+                            </div>
+                            <div class="p-3 bg-green-50 rounded-xl text-center text-green-700">
+                                <div class="text-xs opacity-80">Saldo</div>
+                                <div class="text-xl font-bold">${this.formatMoney(child.money || 0)}</div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-sm text-gray-600 block mb-1">⏰ Kelola Waktu (menit)</label>
+                                <div class="grid grid-cols-3 gap-2 mb-2">
+                                    <button onclick="app.updateTime(${child.id}, 5)" class="bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 font-bold">+5</button>
+                                    <button onclick="app.updateTime(${child.id}, 15)" class="bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 font-bold">+15</button>
+                                    <button onclick="app.updateTime(${child.id}, 30)" class="bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 font-bold">+30</button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button onclick="app.updateTime(${child.id}, -5)" class="bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 font-bold">-5</button>
+                                    <button onclick="app.updateTime(${child.id}, -15)" class="bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 font-bold">-15</button>
+                                    <button onclick="app.updateTime(${child.id}, -30)" class="bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 font-bold">-30</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-sm text-gray-600 block mb-1">💰 Kelola Uang (Rp)</label>
+                                <div class="grid grid-cols-4 gap-2 mb-2">
+                                    <button onclick="app.updateMoney(${child.id}, 1000)" class="bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 font-bold text-xs">+1K</button>
+                                    <button onclick="app.updateMoney(${child.id}, 5000)" class="bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 font-bold text-xs">+5K</button>
+                                    <button onclick="app.updateMoney(${child.id}, 10000)" class="bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 font-bold text-xs">+10K</button>
+                                    <button onclick="app.updateMoney(${child.id}, 20000)" class="bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 font-bold text-xs">+20K</button>
+                                </div>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <button onclick="app.updateMoney(${child.id}, -1000)" class="bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 font-bold text-xs">-1K</button>
+                                    <button onclick="app.updateMoney(${child.id}, -5000)" class="bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 font-bold text-xs">-5K</button>
+                                    <button onclick="app.updateMoney(${child.id}, -10000)" class="bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 font-bold text-xs">-10K</button>
+                                    <button onclick="app.updateMoney(${child.id}, -20000)" class="bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 font-bold text-xs">-20K</button>
+                                </div>
+                            </div>
+
+                            <button onclick="app.showChildDetail(${child.id})" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 font-semibold">
+                                📊 Lihat Detail & Statistik
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            renderHistory() {
+                const container = document.getElementById('historyList');
+                
+                if (this.history.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400 text-center py-8">Belum ada riwayat transaksi</p>';
+                    return;
+                }
+
+                const groupedByDate = {};
+                this.history.forEach(h => {
+                    const date = new Date(h.timestamp).toLocaleDateString('id-ID', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                    });
+                    if (!groupedByDate[date]) groupedByDate[date] = [];
+                    groupedByDate[date].push(h);
+                });
+
+                container.innerHTML = Object.entries(groupedByDate).map(([date, items]) => `
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-gray-700 mb-2">${date}</h4>
+                        <div class="space-y-2">
+                            ${items.map(h => {
+                                let icon = '📝';
+                                let color = 'text-gray-700';
+                                if (h.type === 'time') {
+                                    icon = h.amount > 0 ? '⏰➕' : '⏰➖';
+                                    color = h.amount > 0 ? 'text-green-600' : 'text-red-600';
+                                } else if (h.type === 'money') {
+                                    icon = h.amount > 0 ? '💰➕' : '💸';
+                                    color = h.amount > 0 ? 'text-green-600' : 'text-red-600';
+                                } else if (h.type === 'add_child') {
+                                    icon = '👶';
+                                    color = 'text-blue-600';
+                                }
+                                
+                                return `
+                                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xl">${icon}</span>
+                                            <span class="${color} text-sm">${h.description}</span>
+                                        </div>
+                                        <span class="text-xs text-gray-400">${new Date(h.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            exportAllData() {
+                const data = {
+                    children: this.children,
+                    history: this.history,
+                    settings: this.settings,
+                    exportDate: Date.now()
+                };
+                
+                const dataStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'waktu-anak-backup-' + new Date().toISOString().split('T')[0] + '.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                alert('Data berhasil di-export!');
+            },
+
+            resetAllData() {
+                if (!confirm('PERHATIAN: Ini akan menghapus SEMUA data termasuk anak, waktu, uang, dan riwayat. Yakin?')) return;
+                if (!confirm('Yakin 100%? Data tidak bisa dikembalikan!')) return;
+
+                this.db.ref('children').remove();
+                this.db.ref('history').remove();
+                alert('Semua data berhasil dihapus!');
             },
 
             resetFirebaseConfig() {
@@ -158,193 +950,15 @@
                     localStorage.removeItem('firebaseConfig');
                     location.reload();
                 }
-            },
-
-            listenToChanges() {
-                this.db.ref('children').on('value', (snapshot) => {
-                    this.children = snapshot.val() || {};
-                    this.render();
-                });
-            },
-
-            addChild() {
-                const input = document.getElementById('newChildName');
-                const name = input.value.trim();
-                if (!name) return;
-
-                const newChild = {
-                    id: Date.now(),
-                    name: name,
-                    minutes: 0,
-                    money: 0,
-                    createdAt: Date.now()
-                };
-
-                this.db.ref('children/' + newChild.id).set(newChild);
-                input.value = '';
-            },
-
-            removeChild(id) {
-                if (confirm('Yakin ingin menghapus data anak ini?')) {
-                    this.db.ref('children/' + id).remove();
-                }
-            },
-
-            updateTime(id, amount) {
-                const child = this.children[id];
-                if (child) {
-                    const newMinutes = Math.max(0, child.minutes + amount);
-                    this.db.ref('children/' + id + '/minutes').set(newMinutes);
-                }
-            },
-
-            updateMoney(id, amount) {
-                const child = this.children[id];
-                if (child) {
-                    const currentMoney = child.money || 0;
-                    const newMoney = Math.max(0, currentMoney + amount);
-                    this.db.ref('children/' + id + '/money').set(newMoney);
-                }
-            },
-
-            updateManualMoney(id, isAdd) {
-                const input = document.getElementById('manual-money-' + id);
-                const value = parseInt(input.value);
-                if (!isNaN(value) && value > 0) {
-                    this.updateMoney(id, isAdd ? value : -value);
-                    input.value = '';
-                }
-            },
-
-            updateManual(id, isAdd) {
-                const input = document.getElementById('manual-' + id);
-                const value = parseInt(input.value);
-                if (!isNaN(value) && value > 0) {
-                    this.updateTime(id, isAdd ? value : -value);
-                    input.value = '';
-                }
-            },
-
-            formatTime(minutes) {
-                const hours = Math.floor(minutes / 60);
-                const mins = minutes % 60;
-                return hours > 0 ? hours + ' jam ' + mins + ' menit' : mins + ' menit';
-            },
-
-            formatMoney(amount) {
-                return 'Rp ' + amount.toLocaleString('id-ID');
-            },
-
-            render() {
-                const container = document.getElementById('childrenList');
-                const childrenArray = Object.values(this.children);
-                
-                if (childrenArray.length === 0) {
-                    container.innerHTML = '<div class="bg-white rounded-2xl shadow-lg p-8 text-center text-gray-400 mb-4">Belum ada data anak. Tambahkan anak baru di atas.</div>';
-                    return;
-                }
-
-                container.innerHTML = childrenArray.map(child => {
-                    const canDelete = childrenArray.length > 1;
-                    const currentMoney = child.money || 0;
-                    return `
-                        <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
-                            <div class="flex items-center justify-between mb-5">
-                                <h3 class="text-2xl font-bold text-gray-800">${child.name}</h3>
-                                ${canDelete ? `
-                                    <button onclick="app.removeChild(${child.id})" 
-                                        class="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition">
-                                        🗑️ Hapus
-                                    </button>
-                                ` : ''}
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-3 mb-6">
-                                <div class="text-center p-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl text-white">
-                                    <div class="text-xs opacity-90 mb-1">⏰ Waktu</div>
-                                    <div class="text-2xl font-bold mb-1">${this.formatTime(child.minutes)}</div>
-                                    <div class="text-xs opacity-80">${child.minutes} menit</div>
-                                </div>
-                                <div class="text-center p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl text-white">
-                                    <div class="text-xs opacity-90 mb-1">💰 Uang Jajan</div>
-                                    <div class="text-2xl font-bold mb-1">${this.formatMoney(currentMoney)}</div>
-                                    <div class="text-xs opacity-80">Saldo</div>
-                                </div>
-                            </div>
-
-                            <div class="mb-5">
-                                <p class="text-sm font-semibold text-gray-600 mb-2">⏰ Kelola Waktu</p>
-                                <div class="grid grid-cols-3 gap-2 mb-2">
-                                    <button onclick="app.updateTime(${child.id}, 5)" 
-                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold">+5</button>
-                                    <button onclick="app.updateTime(${child.id}, 15)" 
-                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold">+15</button>
-                                    <button onclick="app.updateTime(${child.id}, 30)" 
-                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold">+30</button>
-                                </div>
-                                <div class="grid grid-cols-3 gap-2">
-                                    <button onclick="app.updateTime(${child.id}, -5)" 
-                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold">-5</button>
-                                    <button onclick="app.updateTime(${child.id}, -15)" 
-                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold">-15</button>
-                                    <button onclick="app.updateTime(${child.id}, -30)" 
-                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold">-30</button>
-                                </div>
-                            </div>
-
-                            <div class="mb-5">
-                                <p class="text-sm font-semibold text-gray-600 mb-2">💰 Kelola Uang Jajan</p>
-                                <div class="grid grid-cols-4 gap-2 mb-2">
-                                    <button onclick="app.updateMoney(${child.id}, 1000)" 
-                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold text-sm">+1K</button>
-                                    <button onclick="app.updateMoney(${child.id}, 5000)" 
-                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold text-sm">+5K</button>
-                                    <button onclick="app.updateMoney(${child.id}, 10000)" 
-                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold text-sm">+10K</button>
-                                    <button onclick="app.updateMoney(${child.id}, 20000)" 
-                                        class="bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition font-bold text-sm">+20K</button>
-                                </div>
-                                <div class="grid grid-cols-4 gap-2">
-                                    <button onclick="app.updateMoney(${child.id}, -1000)" 
-                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold text-sm">-1K</button>
-                                    <button onclick="app.updateMoney(${child.id}, -5000)" 
-                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold text-sm">-5K</button>
-                                    <button onclick="app.updateMoney(${child.id}, -10000)" 
-                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold text-sm">-10K</button>
-                                    <button onclick="app.updateMoney(${child.id}, -20000)" 
-                                        class="bg-red-500 text-white py-2 rounded-xl hover:bg-red-600 transition font-bold text-sm">-20K</button>
-                                </div>
-                            </div>
-
-                            <div class="pt-5 border-t-2 border-gray-100 space-y-3">
-                                <div>
-                                    <p class="text-sm font-semibold text-gray-600 mb-2">✏️ Input Waktu Manual (menit)</p>
-                                    <div class="flex gap-2">
-                                        <input type="number" id="manual-${child.id}" placeholder="Jumlah menit..." min="0"
-                                            class="flex-1 px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
-                                        <button onclick="app.updateManual(${child.id}, true)" 
-                                            class="bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 transition font-semibold text-sm">+</button>
-                                        <button onclick="app.updateManual(${child.id}, false)" 
-                                            class="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition font-semibold text-sm">-</button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-semibold text-gray-600 mb-2">✏️ Input Uang Manual (Rp)</p>
-                                    <div class="flex gap-2">
-                                        <input type="number" id="manual-money-${child.id}" placeholder="Jumlah rupiah..." min="0"
-                                            class="flex-1 px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
-                                        <button onclick="app.updateManualMoney(${child.id}, true)" 
-                                            class="bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 transition font-semibold text-sm">+</button>
-                                        <button onclick="app.updateManualMoney(${child.id}, false)" 
-                                            class="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition font-semibold text-sm">-</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
             }
         };
+
+        // Close modal when clicking outside
+        document.getElementById('childDetailModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                app.closeModal();
+            }
+        });
 
         app.init();
     </script>
