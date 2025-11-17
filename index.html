@@ -246,20 +246,38 @@
                     }
                     
                     this.db = firebase.database();
+                    this.auth = firebase.auth();
                     
                     document.getElementById('setupSection').style.display = 'none';
+                    document.getElementById('authLoadingSection').style.display = 'block';
                     
-                    // Check if PIN exists
-                    this.db.ref('settings/pin').once('value', (snapshot) => {
-                        if (snapshot.exists()) {
-                            this.settings.pin = snapshot.val();
-                            this.showPinLock();
+                    // Anonymous Auth
+                    this.auth.onAuthStateChanged((user) => {
+                        if (user) {
+                            this.currentUser = user;
+                            console.log('User authenticated:', user.uid);
+                            document.getElementById('authLoadingSection').style.display = 'none';
+                            
+                            // Check if PIN exists
+                            this.db.ref('settings/pin').once('value', (snapshot) => {
+                                if (snapshot.exists()) {
+                                    this.settings.pin = snapshot.val();
+                                    this.showPinLock();
+                                } else {
+                                    document.getElementById('pinSetupSection').style.display = 'block';
+                                }
+                            });
+                            
+                            this.listenToChanges();
                         } else {
-                            document.getElementById('pinSetupSection').style.display = 'block';
+                            // Sign in anonymously
+                            this.auth.signInAnonymously().catch((error) => {
+                                console.error('Auth error:', error);
+                                alert('Error authentication: ' + error.message);
+                                document.getElementById('authLoadingSection').style.display = 'none';
+                            });
                         }
                     });
-                    
-                    this.listenToChanges();
                     
                     this.db.ref('.info/connected').on('value', (snapshot) => {
                         const status = document.getElementById('connectionStatus');
@@ -908,23 +926,39 @@
                             </div>
 
                             <div class="pt-3 border-t-2 border-gray-100">
-                                <label class="text-sm text-gray-600 block mb-1">⚙️ Pengaturan</label>
-                                <div class="grid grid-cols-2 gap-2 mb-2">
-                                    <div>
-                                        <label class="text-xs text-gray-500">Target (menit/hari)</label>
-                                        <input type="number" id="manage-target-${child.id}" value="${child.dailyTarget || 60}" 
-                                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm" min="0">
-                                    </div>
-                                    <div>
-                                        <label class="text-xs text-gray-500">Reward (Rp)</label>
-                                        <input type="number" id="manage-reward-${child.id}" value="${child.rewardAmount || 5000}" 
-                                            class="w-full px-2 py-1 border border-gray-300 rounded text-sm" min="0" step="1000">
+                                <label class="text-sm text-gray-600 block mb-1">⚙️ Pengaturan Target & Reward</label>
+                                
+                                <div class="mb-3">
+                                    <label class="text-xs text-gray-500 block mb-1">Target Waktu Harian (menit)</label>
+                                    <div class="flex gap-2 items-center">
+                                        <button onclick="app.adjustTarget(${child.id}, -5)" 
+                                            class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 font-bold">-5</button>
+                                        <button onclick="app.adjustTarget(${child.id}, -10)" 
+                                            class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 font-bold">-10</button>
+                                        <input type="number" id="manage-target-${child.id}" value="${child.dailyTarget || 60}" readonly
+                                            class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-center font-bold text-lg bg-gray-50">
+                                        <button onclick="app.adjustTarget(${child.id}, 5)" 
+                                            class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 font-bold">+5</button>
+                                        <button onclick="app.adjustTarget(${child.id}, 10)" 
+                                            class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 font-bold">+10</button>
                                     </div>
                                 </div>
-                                <button onclick="app.updateChildSettingsFromManage(${child.id})" 
-                                    class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 font-semibold text-sm mb-2">
-                                    💾 Simpan Pengaturan
-                                </button>
+
+                                <div class="mb-2">
+                                    <label class="text-xs text-gray-500 block mb-1">Reward per Target (Rp)</label>
+                                    <div class="flex gap-2 items-center">
+                                        <button onclick="app.adjustReward(${child.id}, -1000)" 
+                                            class="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 font-bold text-sm">-1K</button>
+                                        <button onclick="app.adjustReward(${child.id}, -5000)" 
+                                            class="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 font-bold text-sm">-5K</button>
+                                        <input type="text" id="manage-reward-${child.id}" value="${app.formatMoney(child.rewardAmount || 5000)}" readonly
+                                            class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg text-center font-bold text-lg bg-gray-50">
+                                        <button onclick="app.adjustReward(${child.id}, 1000)" 
+                                            class="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 font-bold text-sm">+1K</button>
+                                        <button onclick="app.adjustReward(${child.id}, 5000)" 
+                                            class="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 font-bold text-sm">+5K</button>
+                                    </div>
+                                </div>
                             </div>
 
                             <button onclick="app.showChildDetail(${child.id})" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 font-semibold">
@@ -957,6 +991,24 @@
                 
                 alert('Pengaturan ' + child.name + ' berhasil diupdate!');
                 this.renderManage();
+            },
+
+            adjustTarget(id, amount) {
+                const child = this.children[id];
+                const currentTarget = child.dailyTarget || 60;
+                const newTarget = Math.max(5, currentTarget + amount);
+                
+                this.db.ref('children/' + id + '/dailyTarget').set(newTarget);
+                this.addHistory(child.name + ': Target diubah jadi ' + newTarget + ' menit', 'settings', id);
+            },
+
+            adjustReward(id, amount) {
+                const child = this.children[id];
+                const currentReward = child.rewardAmount || 5000;
+                const newReward = Math.max(0, currentReward + amount);
+                
+                this.db.ref('children/' + id + '/rewardAmount').set(newReward);
+                this.addHistory(child.name + ': Reward diubah jadi Rp ' + newReward.toLocaleString('id-ID'), 'settings', id);
             },
 
             renderHistory() {
