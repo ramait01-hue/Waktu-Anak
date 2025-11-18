@@ -79,21 +79,25 @@
         <!-- Main App -->
         <div id="appSection" style="display: none;">
             <!-- Navigation Tabs -->
-            <div class="bg-white rounded-2xl shadow-lg p-2 mb-4 flex gap-2">
+            <div class="bg-white rounded-2xl shadow-lg p-2 mb-4 flex gap-2 overflow-x-auto">
                 <button onclick="app.switchTab('dashboard')" id="tab-dashboard"
-                    class="flex-1 py-3 rounded-xl font-semibold transition bg-indigo-600 text-white">
+                    class="flex-1 py-3 rounded-xl font-semibold transition bg-indigo-600 text-white whitespace-nowrap">
                     📊 Dashboard
                 </button>
+                <button onclick="app.switchTab('tasks')" id="tab-tasks"
+                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                    ✅ Aktivitas
+                </button>
                 <button onclick="app.switchTab('manage')" id="tab-manage"
-                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100">
+                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100 whitespace-nowrap">
                     ⚙️ Kelola
                 </button>
                 <button onclick="app.switchTab('history')" id="tab-history"
-                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100">
+                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100 whitespace-nowrap">
                     📜 Riwayat
                 </button>
                 <button onclick="app.switchTab('settings')" id="tab-settings"
-                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100">
+                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100 whitespace-nowrap">
                     ⚙️ Pengaturan
                 </button>
             </div>
@@ -101,6 +105,11 @@
             <!-- Dashboard Tab -->
             <div id="content-dashboard">
                 <div id="dashboardContent"></div>
+            </div>
+
+            <!-- Tasks Tab -->
+            <div id="content-tasks" style="display: none;">
+                <div id="tasksContent"></div>
             </div>
 
             <!-- Manage Tab -->
@@ -202,6 +211,35 @@
             children: {},
             history: [],
             settings: {},
+            tasks: {},
+            dailyTasks: [
+                { id: 'bed', name: 'Tempat tidur: Rapi setiap pagi', points: 0 },
+                { id: 'towel', name: 'Handuk: Dijemur setelah mandi', points: 0 },
+                { id: 'bath', name: 'Mandi: Bersih (gigi, rambut, muka)', points: 0 },
+                { id: 'uniform', name: 'Pakaian sekolah: Lengkap (termasuk peci, kaos kaki, ikat pinggang)', points: 0 },
+                { id: 'terrace', name: 'Teras: Sapu jika kotor', points: 0 },
+                { id: 'cloth', name: 'Kain: Lipat setiap selesai digunakan dan jemur jika ada cucian', points: 0 }
+            ],
+            saturdayTasks: [
+                { id: 'iron', name: 'Menyetrika baju', points: 0 },
+                { id: 'sweep_inside', name: 'Menyapu dalam rumah', points: 0 }
+            ],
+            sundayTasks: [
+                { id: 'wash', name: 'Mencuci baju', points: 0 },
+                { id: 'dry_cloth', name: 'Menjemur kain', points: 0 },
+                { id: 'sweep_outside', name: 'Menyapu halaman luar sampai bersih', points: 0 }
+            ],
+            bonusTasks: [
+                { id: 'quran', name: 'Mengaji lebih dari 2 halaman', points: 10, unit: 'per halaman', input: true },
+                { id: 'schedule', name: 'Mengerjakan kegiatan sesuai jadwal tanpa terkecuali', points: 30 },
+                { id: 'help', name: 'Membantu dengan cepat dan ikhlas jika diminta tolong', points: 10 }
+            ],
+            penaltyTasks: [
+                { id: 'no_schedule', name: 'Tidak mengerjakan kegiatan sesuai jadwal', points: -20 },
+                { id: 'no_quran', name: 'Tidak mengaji Maghrib', points: -10 },
+                { id: 'no_english', name: 'Tidak ikut les English (Rabu/Kamis/Jumat/Sabtu)', points: -20 },
+                { id: 'fight', name: 'Berkelahi / berbicara dengan keras', points: -20 }
+            ],
             currentTab: 'dashboard',
             firebaseInitialized: false,
             isLocked: false,
@@ -393,23 +431,194 @@
                 this.db.ref('settings').on('value', (snapshot) => {
                     this.settings = snapshot.val() || {};
                 });
+
+                this.db.ref('tasks').on('value', (snapshot) => {
+                    this.tasks = snapshot.val() || {};
+                    if (this.currentTab === 'tasks') {
+                        this.renderTasks();
+                    }
+                    this.checkAndResetTasks();
+                });
+            },
+
+            checkAndResetTasks() {
+                const today = new Date().toDateString();
+                const lastReset = this.tasks.lastReset;
+                
+                if (lastReset !== today) {
+                    this.db.ref('tasks').set({
+                        lastReset: today,
+                        completed: {}
+                    });
+                }
+            },
+
+            renderTasks() {
+                const container = document.getElementById('tasksContent');
+                const childrenArray = Object.values(this.children);
+                
+                if (childrenArray.length === 0) {
+                    container.innerHTML = '<div class="bg-white rounded-2xl shadow-lg p-8 text-center text-gray-400">Tambahkan anak terlebih dahulu di tab Kelola</div>';
+                    return;
+                }
+
+                const dayOfWeek = new Date().getDay();
+                const isSaturday = dayOfWeek === 6;
+                const isSunday = dayOfWeek === 0;
+
+                let html = '<div class="space-y-4">';
+
+                // Tugas Harian
+                html += '<div class="bg-white rounded-2xl shadow-lg p-5">';
+                html += '<h2 class="text-xl font-bold text-gray-800 mb-4">📋 Tugas Harian</h2>';
+                html += '<div class="space-y-2">';
+                this.dailyTasks.forEach(task => {
+                    html += this.renderTaskItem(task, 'daily', childrenArray);
+                });
+                html += '</div></div>';
+
+                // Tugas Sabtu
+                if (isSaturday) {
+                    html += '<div class="bg-white rounded-2xl shadow-lg p-5">';
+                    html += '<h2 class="text-xl font-bold text-blue-600 mb-4">🧹 Tugas Sabtu</h2>';
+                    html += '<div class="space-y-2">';
+                    this.saturdayTasks.forEach(task => {
+                        html += this.renderTaskItem(task, 'saturday', childrenArray);
+                    });
+                    html += '</div></div>';
+                }
+
+                // Tugas Minggu
+                if (isSunday) {
+                    html += '<div class="bg-white rounded-2xl shadow-lg p-5">';
+                    html += '<h2 class="text-xl font-bold text-purple-600 mb-4">🧽 Tugas Minggu</h2>';
+                    html += '<div class="space-y-2">';
+                    this.sundayTasks.forEach(task => {
+                        html += this.renderTaskItem(task, 'sunday', childrenArray);
+                    });
+                    html += '</div></div>';
+                }
+
+                // Bonus
+                html += '<div class="bg-white rounded-2xl shadow-lg p-5">';
+                html += '<h2 class="text-xl font-bold text-green-600 mb-4">🌟 Bonus Waktu</h2>';
+                html += '<div class="space-y-2">';
+                this.bonusTasks.forEach(task => {
+                    html += this.renderTaskItem(task, 'bonus', childrenArray);
+                });
+                html += '</div></div>';
+
+                // Pengurangan
+                html += '<div class="bg-white rounded-2xl shadow-lg p-5">';
+                html += '<h2 class="text-xl font-bold text-red-600 mb-4">⚠️ Pengurangan Waktu</h2>';
+                html += '<div class="space-y-2">';
+                this.penaltyTasks.forEach(task => {
+                    html += this.renderTaskItem(task, 'penalty', childrenArray);
+                });
+                html += '</div></div>';
+
+                html += '</div>';
+                container.innerHTML = html;
+            },
+
+            renderTaskItem(task, category, childrenArray) {
+                let html = '<div class="border-2 border-gray-200 rounded-xl p-4">';
+                html += '<div class="mb-3">';
+                html += '<div class="font-semibold text-gray-800">' + task.name + '</div>';
+                if (task.points !== 0) {
+                    const color = task.points > 0 ? 'text-green-600' : 'text-red-600';
+                    const sign = task.points > 0 ? '+' : '';
+                    html += '<div class="text-sm ' + color + ' font-bold">' + sign + task.points + ' menit' + (task.unit ? ' ' + task.unit : '') + '</div>';
+                }
+                html += '</div>';
+
+                if (task.input) {
+                    html += '<div class="mb-3">';
+                    html += '<input type="number" id="input-' + category + '-' + task.id + '" placeholder="Jumlah halaman lebih dari 2..." min="1" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm">';
+                    html += '</div>';
+                }
+
+                html += '<div class="space-y-2">';
+                childrenArray.forEach(child => {
+                    const taskKey = category + '_' + task.id + '_' + child.id;
+                    const completed = this.tasks.completed && this.tasks.completed[taskKey];
+                    
+                    html += '<div class="flex items-center justify-between bg-gray-50 p-2 rounded-lg">';
+                    html += '<span class="text-sm font-medium" style="color: ' + (child.color || '#667eea') + '">' + child.name + '</span>';
+                    html += '<button onclick="app.toggleTask(\'' + taskKey + '\', ' + child.id + ', ' + task.points + ', \'' + task.name + '\', \'' + category + '\', \'' + task.id + '\')" class="' + (completed ? 'bg-green-500' : 'bg-gray-300') + ' text-white px-4 py-1 rounded-lg font-semibold text-sm">';
+                    html += completed ? '✓ Selesai' : 'Tandai';
+                    html += '</button>';
+                    html += '</div>';
+                });
+                html += '</div>';
+
+                html += '</div>';
+                return html;
+            },
+
+            toggleTask(taskKey, childId, points, taskName, category, taskId) {
+                if (!this.settings.pin) {
+                    this.executeToggleTask(taskKey, childId, points, taskName, category, taskId);
+                    return;
+                }
+
+                const pin = prompt('🔐 Masukkan PIN Orang Tua:');
+                if (pin === this.settings.pin) {
+                    this.executeToggleTask(taskKey, childId, points, taskName, category, taskId);
+                } else if (pin !== null) {
+                    alert('❌ PIN salah!');
+                }
+            },
+
+            executeToggleTask(taskKey, childId, points, taskName, category, taskId) {
+                const completed = this.tasks.completed || {};
+                const isCompleted = completed[taskKey];
+
+                if (isCompleted) {
+                    delete completed[taskKey];
+                    this.db.ref('tasks/completed/' + taskKey).remove();
+                    
+                    const child = this.children[childId];
+                    this.addHistory(child.name + ': Batal - ' + taskName, 'task', childId);
+                    alert('✓ Task dibatalkan untuk ' + child.name);
+                } else {
+                    let finalPoints = points;
+                    
+                    if (category === 'bonus' && taskId === 'quran') {
+                        const input = document.getElementById('input-' + category + '-' + taskId);
+                        const pages = parseInt(input.value);
+                        if (!pages || pages < 1) {
+                            alert('Masukkan jumlah halaman yang valid!');
+                            return;
+                        }
+                        finalPoints = points * pages;
+                    }
+
+                    completed[taskKey] = true;
+                    this.db.ref('tasks/completed/' + taskKey).set(true);
+                    
+                    this.updateTime(childId, finalPoints, taskName);
+                    
+                    const child = this.children[childId];
+                    alert('✓ Task selesai untuk ' + child.name + ' (' + (finalPoints > 0 ? '+' : '') + finalPoints + ' menit)');
+                }
             },
 
             switchTab(tab) {
                 this.currentTab = tab;
                 
-                ['dashboard', 'manage', 'history', 'settings'].forEach(t => {
+                ['dashboard', 'tasks', 'manage', 'history', 'settings'].forEach(t => {
                     document.getElementById('content-' + t).style.display = 'none';
                     const btn = document.getElementById('tab-' + t);
                     if (btn) {
-                        btn.className = 'flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100';
+                        btn.className = 'flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100 whitespace-nowrap';
                     }
                 });
                 
                 document.getElementById('content-' + tab).style.display = 'block';
                 const activeBtn = document.getElementById('tab-' + tab);
                 if (activeBtn) {
-                    activeBtn.className = 'flex-1 py-3 rounded-xl font-semibold transition bg-indigo-600 text-white';
+                    activeBtn.className = 'flex-1 py-3 rounded-xl font-semibold transition bg-indigo-600 text-white whitespace-nowrap';
                 }
                 
                 this.renderCurrentTab();
@@ -419,6 +628,9 @@
                 switch(this.currentTab) {
                     case 'dashboard':
                         this.renderDashboard();
+                        break;
+                    case 'tasks':
+                        this.renderTasks();
                         break;
                     case 'manage':
                         this.renderManage();
