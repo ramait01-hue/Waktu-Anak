@@ -84,6 +84,10 @@
                     class="flex-1 py-3 rounded-xl font-semibold transition bg-indigo-600 text-white whitespace-nowrap">
                     📊 Dashboard
                 </button>
+                <button onclick="app.switchTab('schedule')" id="tab-schedule"
+                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                    📅 Jadwal
+                </button>
                 <button onclick="app.switchTab('tasks')" id="tab-tasks"
                     class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100 whitespace-nowrap">
                     ✅ Aktivitas
@@ -105,6 +109,11 @@
             <!-- Dashboard Tab -->
             <div id="content-dashboard">
                 <div id="dashboardContent"></div>
+            </div>
+
+            <!-- Schedule Tab -->
+            <div id="content-schedule" style="display: none;">
+                <div id="scheduleContent"></div>
             </div>
 
             <!-- Tasks Tab -->
@@ -160,6 +169,17 @@
             <!-- Settings Tab -->
             <div id="content-settings" style="display: none;">
                 <div class="space-y-4">
+                    <!-- Time Rules Management -->
+                    <div class="bg-white rounded-2xl shadow-lg p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-semibold text-gray-800">📋 Management Aturan Waktu</h2>
+                            <button onclick="app.showAddRuleForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-semibold text-sm">
+                                + Tambah Aturan
+                            </button>
+                        </div>
+                        <div id="timeRulesList"></div>
+                    </div>
+
                     <div class="bg-white rounded-2xl shadow-lg p-5">
                         <h2 class="text-lg font-semibold text-gray-800 mb-3">🔐 Keamanan</h2>
                         <button onclick="app.changePin()" 
@@ -212,34 +232,57 @@
             history: [],
             settings: {},
             tasks: {},
+            schedules: {},
+            timeRules: {},
             dailyTasks: [
-                { id: 'bed', name: 'Tempat tidur: Rapi setiap pagi', points: 0 },
-                { id: 'towel', name: 'Handuk: Dijemur setelah mandi', points: 0 },
-                { id: 'bath', name: 'Mandi: Bersih (gigi, rambut, muka)', points: 0 },
-                { id: 'uniform', name: 'Pakaian sekolah: Lengkap (termasuk peci, kaos kaki, ikat pinggang)', points: 0 },
-                { id: 'terrace', name: 'Teras: Sapu jika kotor', points: 0 },
-                { id: 'cloth', name: 'Kain: Lipat setiap selesai digunakan dan jemur jika ada cucian', points: 0 }
+                { id: 'bed', name: 'Tempat tidur: Rapi setiap pagi', category: 'daily' },
+                { id: 'towel', name: 'Handuk: Dijemur setelah mandi', category: 'daily' },
+                { id: 'bath', name: 'Mandi: Bersih (gigi, rambut, muka)', category: 'daily' },
+                { id: 'uniform', name: 'Pakaian sekolah: Lengkap (termasuk peci, kaos kaki, ikat pinggang)', category: 'daily' },
+                { id: 'terrace', name: 'Teras: Sapu jika kotor', category: 'daily' },
+                { id: 'cloth', name: 'Kain: Lipat setiap selesai digunakan dan jemur jika ada cucian', category: 'daily' }
             ],
             saturdayTasks: [
-                { id: 'iron', name: 'Menyetrika baju', points: 0 },
-                { id: 'sweep_inside', name: 'Menyapu dalam rumah', points: 0 }
+                { id: 'iron', name: 'Menyetrika baju', category: 'saturday' },
+                { id: 'sweep_inside', name: 'Menyapu dalam rumah', category: 'saturday' }
             ],
             sundayTasks: [
-                { id: 'wash', name: 'Mencuci baju', points: 0 },
-                { id: 'dry_cloth', name: 'Menjemur kain', points: 0 },
-                { id: 'sweep_outside', name: 'Menyapu halaman luar sampai bersih', points: 0 }
+                { id: 'wash', name: 'Mencuci baju', category: 'sunday' },
+                { id: 'dry_cloth', name: 'Menjemur kain', category: 'sunday' },
+                { id: 'sweep_outside', name: 'Menyapu halaman luar sampai bersih', category: 'sunday' }
             ],
             bonusTasks: [
-                { id: 'quran', name: 'Mengaji lebih dari 2 halaman', points: 10, unit: 'per halaman', input: true },
-                { id: 'schedule', name: 'Mengerjakan kegiatan sesuai jadwal tanpa terkecuali', points: 30 },
-                { id: 'help', name: 'Membantu dengan cepat dan ikhlas jika diminta tolong', points: 10 }
+                { id: 'quran', name: 'Mengaji lebih dari 2 halaman', category: 'bonus', unit: 'per halaman', input: true },
+                { id: 'schedule', name: 'Mengerjakan kegiatan sesuai jadwal tanpa terkecuali', category: 'bonus' },
+                { id: 'help', name: 'Membantu dengan cepat dan ikhlas jika diminta tolong', category: 'bonus' }
             ],
             penaltyTasks: [
-                { id: 'no_schedule', name: 'Tidak mengerjakan kegiatan sesuai jadwal', points: -20 },
-                { id: 'no_quran', name: 'Tidak mengaji Maghrib', points: -10 },
-                { id: 'no_english', name: 'Tidak ikut les English (Rabu/Kamis/Jumat/Sabtu)', points: -20 },
-                { id: 'fight', name: 'Berkelahi / berbicara dengan keras', points: -20 }
+                { id: 'no_schedule', name: 'Tidak mengerjakan kegiatan sesuai jadwal', category: 'penalty' },
+                { id: 'no_quran', name: 'Tidak mengaji Maghrib', category: 'penalty' },
+                { id: 'no_english', name: 'Tidak ikut les English (Rabu/Kamis/Jumat/Sabtu)', category: 'penalty' },
+                { id: 'fight', name: 'Berkelahi / berbicara dengan keras', category: 'penalty' }
             ],
+            defaultTimeRules: {
+                'daily_bed': { name: 'Tempat tidur rapi', points: 0, category: 'Tugas Harian' },
+                'daily_towel': { name: 'Handuk dijemur', points: 0, category: 'Tugas Harian' },
+                'daily_bath': { name: 'Mandi bersih', points: 0, category: 'Tugas Harian' },
+                'daily_uniform': { name: 'Pakaian sekolah lengkap', points: 0, category: 'Tugas Harian' },
+                'daily_terrace': { name: 'Teras disapu', points: 0, category: 'Tugas Harian' },
+                'daily_cloth': { name: 'Kain dilipat', points: 0, category: 'Tugas Harian' },
+                'saturday_iron': { name: 'Menyetrika baju', points: 0, category: 'Tugas Sabtu' },
+                'saturday_sweep_inside': { name: 'Menyapu dalam rumah', points: 0, category: 'Tugas Sabtu' },
+                'sunday_wash': { name: 'Mencuci baju', points: 0, category: 'Tugas Minggu' },
+                'sunday_dry_cloth': { name: 'Menjemur kain', points: 0, category: 'Tugas Minggu' },
+                'sunday_sweep_outside': { name: 'Menyapu halaman luar', points: 0, category: 'Tugas Minggu' },
+                'bonus_quran': { name: 'Mengaji per halaman', points: 10, category: 'Bonus', unit: 'per halaman' },
+                'bonus_schedule': { name: 'Sesuai jadwal tanpa terkecuali', points: 30, category: 'Bonus' },
+                'bonus_help': { name: 'Membantu dengan ikhlas', points: 10, category: 'Bonus' },
+                'penalty_no_schedule': { name: 'Tidak sesuai jadwal', points: -20, category: 'Penalty' },
+                'penalty_no_quran': { name: 'Tidak mengaji Maghrib', points: -10, category: 'Penalty' },
+                'penalty_no_english': { name: 'Tidak ikut les English', points: -20, category: 'Penalty' },
+                'penalty_fight': { name: 'Berkelahi / keras', points: -20, category: 'Penalty' },
+                'schedule_missed': { name: 'Tidak hadir jadwal (default)', points: -20, category: 'Jadwal' }
+            },
             currentTab: 'dashboard',
             firebaseInitialized: false,
             isLocked: false,
@@ -439,6 +482,202 @@
                     }
                     this.checkAndResetTasks();
                 });
+
+                this.db.ref('schedules').on('value', (snapshot) => {
+                    this.schedules = snapshot.val() || {};
+                    if (this.currentTab === 'schedule') {
+                        this.renderSchedule();
+                    }
+                    this.checkAndResetSchedules();
+                });
+
+                this.db.ref('timeRules').on('value', (snapshot) => {
+                    this.timeRules = snapshot.val() || {};
+                    if (Object.keys(this.timeRules).length === 0) {
+                        this.db.ref('timeRules').set(this.defaultTimeRules);
+                    }
+                });
+            },
+
+            renderTimeRules() {
+                const container = document.getElementById('timeRulesList');
+                if (!container) return;
+
+                const rules = this.timeRules || this.defaultTimeRules;
+                const categories = {};
+
+                Object.entries(rules).forEach(([key, rule]) => {
+                    const cat = rule.category || 'Lainnya';
+                    if (!categories[cat]) categories[cat] = [];
+                    categories[cat].push({ key, ...rule });
+                });
+
+                let html = '';
+                Object.entries(categories).forEach(([category, rulesList]) => {
+                    html += '<div class="mb-4">';
+                    html += '<h3 class="font-bold text-gray-700 mb-2">' + category + '</h3>';
+                    html += '<div class="space-y-2">';
+                    
+                    rulesList.forEach(rule => {
+                        const color = rule.points > 0 ? 'text-green-600' : rule.points < 0 ? 'text-red-600' : 'text-gray-600';
+                        const sign = rule.points > 0 ? '+' : '';
+                        
+                        html += '<div class="flex items-center justify-between bg-gray-50 p-3 rounded-lg">';
+                        html += '<div class="flex-1">';
+                        html += '<div class="font-semibold text-sm">' + rule.name + '</div>';
+                        html += '<div class="text-xs ' + color + ' font-bold">' + sign + rule.points + ' menit' + (rule.unit ? ' ' + rule.unit : '') + '</div>';
+                        html += '</div>';
+                        html += '<div class="flex gap-2">';
+                        html += '<button onclick="app.editRule(\'' + rule.key + '\')" class="text-blue-600 hover:text-blue-800 text-sm font-semibold">Edit</button>';
+                        html += '<button onclick="app.deleteRule(\'' + rule.key + '\')" class="text-red-600 hover:text-red-800 text-sm font-semibold">Hapus</button>';
+                        html += '</div>';
+                        html += '</div>';
+                    });
+                    
+                    html += '</div></div>';
+                });
+
+                container.innerHTML = html;
+            },
+
+            showAddRuleForm() {
+                const html = '<div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px;">' +
+                    '<div style="background: white; border-radius: 16px; padding: 24px; max-width: 400px; width: 100%;">' +
+                    '<h3 class="text-xl font-bold mb-4">Tambah Aturan Baru</h3>' +
+                    '<div class="space-y-3">' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Nama Aturan</label>' +
+                    '<input type="text" id="rule-name" placeholder="Contoh: Mencuci piring" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"></div>' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Kategori</label>' +
+                    '<select id="rule-category" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg">' +
+                    '<option value="Tugas Harian">Tugas Harian</option>' +
+                    '<option value="Tugas Sabtu">Tugas Sabtu</option>' +
+                    '<option value="Tugas Minggu">Tugas Minggu</option>' +
+                    '<option value="Bonus">Bonus</option>' +
+                    '<option value="Penalty">Penalty</option>' +
+                    '<option value="Jadwal">Jadwal</option>' +
+                    '<option value="Lainnya">Lainnya</option>' +
+                    '</select></div>' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Waktu (menit)</label>' +
+                    '<input type="number" id="rule-points" placeholder="Contoh: 10 atau -20" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"></div>' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Unit (opsional)</label>' +
+                    '<input type="text" id="rule-unit" placeholder="Contoh: per halaman" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"></div>' +
+                    '<div class="flex gap-2">' +
+                    '<button onclick="app.saveNewRule()" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold">Simpan</button>' +
+                    '<button onclick="app.closeRuleForm()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 font-semibold">Batal</button>' +
+                    '</div></div></div></div>';
+
+                document.body.insertAdjacentHTML('beforeend', html);
+            },
+
+            editRule(ruleKey) {
+                const rule = this.timeRules[ruleKey];
+                if (!rule) return;
+
+                const html = '<div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px;">' +
+                    '<div style="background: white; border-radius: 16px; padding: 24px; max-width: 400px; width: 100%;">' +
+                    '<h3 class="text-xl font-bold mb-4">Edit Aturan</h3>' +
+                    '<div class="space-y-3">' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Nama Aturan</label>' +
+                    '<input type="text" id="edit-rule-name" value="' + rule.name + '" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"></div>' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Kategori</label>' +
+                    '<select id="edit-rule-category" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg">' +
+                    '<option value="Tugas Harian" ' + (rule.category === 'Tugas Harian' ? 'selected' : '') + '>Tugas Harian</option>' +
+                    '<option value="Tugas Sabtu" ' + (rule.category === 'Tugas Sabtu' ? 'selected' : '') + '>Tugas Sabtu</option>' +
+                    '<option value="Tugas Minggu" ' + (rule.category === 'Tugas Minggu' ? 'selected' : '') + '>Tugas Minggu</option>' +
+                    '<option value="Bonus" ' + (rule.category === 'Bonus' ? 'selected' : '') + '>Bonus</option>' +
+                    '<option value="Penalty" ' + (rule.category === 'Penalty' ? 'selected' : '') + '>Penalty</option>' +
+                    '<option value="Jadwal" ' + (rule.category === 'Jadwal' ? 'selected' : '') + '>Jadwal</option>' +
+                    '<option value="Lainnya" ' + (rule.category === 'Lainnya' ? 'selected' : '') + '>Lainnya</option>' +
+                    '</select></div>' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Waktu (menit)</label>' +
+                    '<input type="number" id="edit-rule-points" value="' + rule.points + '" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"></div>' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Unit (opsional)</label>' +
+                    '<input type="text" id="edit-rule-unit" value="' + (rule.unit || '') + '" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"></div>' +
+                    '<div class="flex gap-2">' +
+                    '<button onclick="app.saveEditedRule(\'' + ruleKey + '\')" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold">Simpan</button>' +
+                    '<button onclick="app.closeRuleForm()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 font-semibold">Batal</button>' +
+                    '</div></div></div></div>';
+
+                document.body.insertAdjacentHTML('beforeend', html);
+            },
+
+            closeRuleForm() {
+                const modal = document.querySelector('[style*="position: fixed"]');
+                if (modal) modal.remove();
+            },
+
+            saveNewRule() {
+                const name = document.getElementById('rule-name').value.trim();
+                const category = document.getElementById('rule-category').value;
+                const points = parseInt(document.getElementById('rule-points').value);
+                const unit = document.getElementById('rule-unit').value.trim();
+
+                if (!name || isNaN(points)) {
+                    alert('Nama dan waktu harus diisi!');
+                    return;
+                }
+
+                const ruleKey = 'custom_' + Date.now();
+                const rule = {
+                    name: name,
+                    category: category,
+                    points: points,
+                    unit: unit || null
+                };
+
+                this.db.ref('timeRules/' + ruleKey).set(rule);
+                this.addHistory('Aturan baru ditambahkan: ' + name, 'settings', null);
+
+                this.closeRuleForm();
+                alert('✓ Aturan berhasil ditambahkan!');
+            },
+
+            saveEditedRule(ruleKey) {
+                const name = document.getElementById('edit-rule-name').value.trim();
+                const category = document.getElementById('edit-rule-category').value;
+                const points = parseInt(document.getElementById('edit-rule-points').value);
+                const unit = document.getElementById('edit-rule-unit').value.trim();
+
+                if (!name || isNaN(points)) {
+                    alert('Nama dan waktu harus diisi!');
+                    return;
+                }
+
+                const rule = {
+                    name: name,
+                    category: category,
+                    points: points,
+                    unit: unit || null
+                };
+
+                this.db.ref('timeRules/' + ruleKey).set(rule);
+                this.addHistory('Aturan diubah: ' + name, 'settings', null);
+
+                this.closeRuleForm();
+                alert('✓ Aturan berhasil diupdate!');
+            },
+
+            deleteRule(ruleKey) {
+                const rule = this.timeRules[ruleKey];
+                if (confirm('Hapus aturan "' + rule.name + '"?')) {
+                    this.db.ref('timeRules/' + ruleKey).remove();
+                    this.addHistory('Aturan dihapus: ' + rule.name, 'settings', null);
+                    alert('✓ Aturan berhasil dihapus!');
+                }
+            },
+
+            checkAndResetSchedules() {
+                const today = new Date().toDateString();
+                const lastReset = this.schedules.lastReset;
+                
+                if (lastReset !== today) {
+                    const completed = this.schedules.completed || {};
+                    this.db.ref('schedules').set({
+                        lastReset: today,
+                        completed: {},
+                        items: this.schedules.items || {}
+                    });
+                }
             },
 
             checkAndResetTasks() {
@@ -522,13 +761,17 @@
             },
 
             renderTaskItem(task, category, childrenArray) {
+                const ruleKey = category + '_' + task.id;
+                const rule = this.timeRules[ruleKey] || { points: 0 };
+                const points = rule.points || 0;
+
                 let html = '<div class="border-2 border-gray-200 rounded-xl p-4">';
                 html += '<div class="mb-3">';
                 html += '<div class="font-semibold text-gray-800">' + task.name + '</div>';
-                if (task.points !== 0) {
-                    const color = task.points > 0 ? 'text-green-600' : 'text-red-600';
-                    const sign = task.points > 0 ? '+' : '';
-                    html += '<div class="text-sm ' + color + ' font-bold">' + sign + task.points + ' menit' + (task.unit ? ' ' + task.unit : '') + '</div>';
+                if (points !== 0) {
+                    const color = points > 0 ? 'text-green-600' : 'text-red-600';
+                    const sign = points > 0 ? '+' : '';
+                    html += '<div class="text-sm ' + color + ' font-bold">' + sign + points + ' menit' + (rule.unit ? ' ' + rule.unit : '') + '</div>';
                 }
                 html += '</div>';
 
@@ -545,7 +788,7 @@
                     
                     html += '<div class="flex items-center justify-between bg-gray-50 p-2 rounded-lg">';
                     html += '<span class="text-sm font-medium" style="color: ' + (child.color || '#667eea') + '">' + child.name + '</span>';
-                    html += '<button onclick="app.toggleTask(\'' + taskKey + '\', ' + child.id + ', ' + task.points + ', \'' + task.name + '\', \'' + category + '\', \'' + task.id + '\')" class="' + (completed ? 'bg-green-500' : 'bg-gray-300') + ' text-white px-4 py-1 rounded-lg font-semibold text-sm">';
+                    html += '<button onclick="app.toggleTask(\'' + taskKey + '\', ' + child.id + ', ' + points + ', \'' + task.name + '\', \'' + category + '\', \'' + task.id + '\')" class="' + (completed ? 'bg-green-500' : 'bg-gray-300') + ' text-white px-4 py-1 rounded-lg font-semibold text-sm">';
                     html += completed ? '✓ Selesai' : 'Tandai';
                     html += '</button>';
                     html += '</div>';
@@ -574,6 +817,10 @@
                 const completed = this.tasks.completed || {};
                 const isCompleted = completed[taskKey];
 
+                const ruleKey = category + '_' + taskId;
+                const rule = this.timeRules[ruleKey] || { points: points };
+                let finalPoints = rule.points || points;
+
                 if (isCompleted) {
                     delete completed[taskKey];
                     this.db.ref('tasks/completed/' + taskKey).remove();
@@ -582,8 +829,6 @@
                     this.addHistory(child.name + ': Batal - ' + taskName, 'task', childId);
                     alert('✓ Task dibatalkan untuk ' + child.name);
                 } else {
-                    let finalPoints = points;
-                    
                     if (category === 'bonus' && taskId === 'quran') {
                         const input = document.getElementById('input-' + category + '-' + taskId);
                         const pages = parseInt(input.value);
@@ -591,7 +836,7 @@
                             alert('Masukkan jumlah halaman yang valid!');
                             return;
                         }
-                        finalPoints = points * pages;
+                        finalPoints = rule.points * pages;
                     }
 
                     completed[taskKey] = true;
@@ -604,10 +849,196 @@
                 }
             },
 
+            renderSchedule() {
+                const container = document.getElementById('scheduleContent');
+                const childrenArray = Object.values(this.children);
+                
+                if (childrenArray.length === 0) {
+                    container.innerHTML = '<div class="bg-white rounded-2xl shadow-lg p-8 text-center text-gray-400">Tambahkan anak terlebih dahulu di tab Kelola</div>';
+                    return;
+                }
+
+                const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                const today = new Date().getDay();
+
+                let html = '<div class="space-y-4">';
+
+                childrenArray.forEach(child => {
+                    html += '<div class="bg-white rounded-2xl shadow-lg p-5">';
+                    html += '<div class="flex items-center justify-between mb-4">';
+                    html += '<h2 class="text-xl font-bold" style="color: ' + (child.color || '#667eea') + '">📚 ' + child.name + '</h2>';
+                    html += '<button onclick="app.showAddScheduleForm(' + child.id + ')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-semibold text-sm">+ Tambah Jadwal</button>';
+                    html += '</div>';
+
+                    const childSchedules = this.schedules.items && this.schedules.items[child.id] ? this.schedules.items[child.id] : {};
+
+                    for (let day = 0; day < 7; day++) {
+                        const daySchedules = Object.values(childSchedules).filter(s => s.day === day);
+                        if (daySchedules.length > 0) {
+                            const isToday = day === today;
+                            html += '<div class="mb-3 ' + (isToday ? 'border-2 border-indigo-500' : 'border-2 border-gray-200') + ' rounded-xl p-3">';
+                            html += '<div class="font-bold text-gray-800 mb-2">' + (isToday ? '📍 ' : '') + days[day] + (isToday ? ' (Hari Ini)' : '') + '</div>';
+                            html += '<div class="space-y-2">';
+
+                            daySchedules.sort((a, b) => a.time.localeCompare(b.time)).forEach(schedule => {
+                                const scheduleKey = child.id + '_' + schedule.id;
+                                const completed = this.schedules.completed && this.schedules.completed[scheduleKey];
+                                
+                                html += '<div class="flex items-center justify-between bg-gray-50 p-2 rounded-lg">';
+                                html += '<div class="flex-1">';
+                                html += '<div class="font-semibold text-sm">' + schedule.time + ' - ' + schedule.name + '</div>';
+                                if (schedule.penalty) {
+                                    html += '<div class="text-xs text-red-600">Tidak hadir: -' + schedule.penalty + ' menit</div>';
+                                }
+                                html += '</div>';
+                                html += '<div class="flex gap-2">';
+                                if (isToday) {
+                                    html += '<button onclick="app.toggleSchedule(\'' + scheduleKey + '\', ' + child.id + ', ' + (schedule.penalty || 0) + ', \'' + schedule.name + '\')" class="' + (completed ? 'bg-green-500' : 'bg-gray-300') + ' text-white px-3 py-1 rounded-lg font-semibold text-sm">';
+                                    html += completed ? '✓' : '○';
+                                    html += '</button>';
+                                }
+                                html += '<button onclick="app.deleteSchedule(' + child.id + ', \'' + schedule.id + '\')" class="text-red-500 hover:text-red-700 px-2">🗑️</button>';
+                                html += '</div>';
+                                html += '</div>';
+                            });
+
+                            html += '</div></div>';
+                        }
+                    }
+
+                    if (Object.keys(childSchedules).length === 0) {
+                        html += '<p class="text-gray-400 text-center py-4">Belum ada jadwal. Klik "Tambah Jadwal" untuk membuat jadwal baru.</p>';
+                    }
+
+                    html += '</div>';
+                });
+
+                html += '</div>';
+                container.innerHTML = html;
+            },
+
+            showAddScheduleForm(childId) {
+                const child = this.children[childId];
+                const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+                let dayOptions = '';
+                days.forEach((day, index) => {
+                    dayOptions += '<option value="' + index + '">' + day + '</option>';
+                });
+
+                const html = '<div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px;">' +
+                    '<div style="background: white; border-radius: 16px; padding: 24px; max-width: 400px; width: 100%;">' +
+                    '<h3 class="text-xl font-bold mb-4">Tambah Jadwal untuk ' + child.name + '</h3>' +
+                    '<div class="space-y-3">' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Hari</label>' +
+                    '<select id="schedule-day" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg">' + dayOptions + '</select></div>' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Waktu (HH:MM)</label>' +
+                    '<input type="time" id="schedule-time" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"></div>' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Nama Kegiatan</label>' +
+                    '<input type="text" id="schedule-name" placeholder="Contoh: Les English" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"></div>' +
+                    '<div><label class="text-sm font-semibold text-gray-700 block mb-1">Pengurangan Waktu jika Tidak Hadir (menit)</label>' +
+                    '<input type="number" id="schedule-penalty" value="' + (this.timeRules.schedule_missed?.points ? Math.abs(this.timeRules.schedule_missed.points) : 20) + '" min="0" class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"></div>' +
+                    '<div class="flex gap-2">' +
+                    '<button onclick="app.saveSchedule(' + childId + ')" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold">Simpan</button>' +
+                    '<button onclick="app.closeScheduleForm()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 font-semibold">Batal</button>' +
+                    '</div></div></div></div>';
+
+                document.body.insertAdjacentHTML('beforeend', html);
+            },
+
+            closeScheduleForm() {
+                const modal = document.querySelector('[style*="position: fixed"]');
+                if (modal) modal.remove();
+            },
+
+            saveSchedule(childId) {
+                const day = parseInt(document.getElementById('schedule-day').value);
+                const time = document.getElementById('schedule-time').value;
+                const name = document.getElementById('schedule-name').value.trim();
+                const penalty = parseInt(document.getElementById('schedule-penalty').value) || 0;
+
+                if (!time || !name) {
+                    alert('Waktu dan nama kegiatan harus diisi!');
+                    return;
+                }
+
+                const scheduleId = Date.now();
+                const schedule = {
+                    id: scheduleId,
+                    day: day,
+                    time: time,
+                    name: name,
+                    penalty: penalty
+                };
+
+                this.db.ref('schedules/items/' + childId + '/' + scheduleId).set(schedule);
+                
+                const child = this.children[childId];
+                this.addHistory(child.name + ': Jadwal ditambahkan - ' + name, 'schedule', childId);
+
+                this.closeScheduleForm();
+                alert('✓ Jadwal berhasil ditambahkan!');
+            },
+
+            deleteSchedule(childId, scheduleId) {
+                if (confirm('Hapus jadwal ini?')) {
+                    this.db.ref('schedules/items/' + childId + '/' + scheduleId).remove();
+                    
+                    const child = this.children[childId];
+                    this.addHistory(child.name + ': Jadwal dihapus', 'schedule', childId);
+                }
+            },
+
+            toggleSchedule(scheduleKey, childId, penalty, scheduleName) {
+                const completed = this.schedules.completed || {};
+                const isCompleted = completed[scheduleKey];
+
+                if (isCompleted) {
+                    this.db.ref('schedules/completed/' + scheduleKey).remove();
+                    
+                    const child = this.children[childId];
+                    this.addHistory(child.name + ': Batal hadir - ' + scheduleName, 'schedule', childId);
+                } else {
+                    this.db.ref('schedules/completed/' + scheduleKey).set(true);
+                    
+                    const child = this.children[childId];
+                    this.addHistory(child.name + ': Hadir - ' + scheduleName, 'schedule', childId);
+                }
+            },
+
+            checkMissedSchedules() {
+                if (!this.schedules.items) return;
+
+                const now = new Date();
+                const today = now.getDay();
+                const currentTime = now.getHours() * 60 + now.getMinutes();
+
+                Object.entries(this.schedules.items).forEach(([childId, schedules]) => {
+                    Object.values(schedules).forEach(schedule => {
+                        if (schedule.day === today && schedule.penalty > 0) {
+                            const scheduleTime = parseInt(schedule.time.split(':')[0]) * 60 + parseInt(schedule.time.split(':')[1]);
+                            
+                            if (currentTime > scheduleTime + 60) {
+                                const scheduleKey = childId + '_' + schedule.id;
+                                const completed = this.schedules.completed && this.schedules.completed[scheduleKey];
+                                
+                                if (!completed) {
+                                    const alreadyPenalized = this.schedules.penalized && this.schedules.penalized[scheduleKey];
+                                    if (!alreadyPenalized) {
+                                        this.updateTime(childId, -schedule.penalty, 'Tidak hadir: ' + schedule.name);
+                                        this.db.ref('schedules/penalized/' + scheduleKey).set(true);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+            },
+
             switchTab(tab) {
                 this.currentTab = tab;
                 
-                ['dashboard', 'tasks', 'manage', 'history', 'settings'].forEach(t => {
+                ['dashboard', 'schedule', 'tasks', 'manage', 'history', 'settings'].forEach(t => {
                     document.getElementById('content-' + t).style.display = 'none';
                     const btn = document.getElementById('tab-' + t);
                     if (btn) {
@@ -629,6 +1060,9 @@
                     case 'dashboard':
                         this.renderDashboard();
                         break;
+                    case 'schedule':
+                        this.renderSchedule();
+                        break;
                     case 'tasks':
                         this.renderTasks();
                         break;
@@ -637,6 +1071,9 @@
                         break;
                     case 'history':
                         this.renderHistory();
+                        break;
+                    case 'settings':
+                        this.renderTimeRules();
                         break;
                 }
             },
