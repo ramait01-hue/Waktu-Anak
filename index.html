@@ -84,6 +84,10 @@
                     class="flex-1 py-3 rounded-xl font-semibold transition bg-indigo-600 text-white whitespace-nowrap">
                     📊 Dashboard
                 </button>
+                <button onclick="app.switchTab('analytics')" id="tab-analytics"
+                    class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                    📈 Statistik
+                </button>
                 <button onclick="app.switchTab('schedule')" id="tab-schedule"
                     class="flex-1 py-3 rounded-xl font-semibold transition text-gray-600 hover:bg-gray-100 whitespace-nowrap">
                     📅 Jadwal
@@ -109,6 +113,11 @@
             <!-- Dashboard Tab -->
             <div id="content-dashboard">
                 <div id="dashboardContent"></div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="content-analytics" style="display: none;">
+                <div id="analyticsContent"></div>
             </div>
 
             <!-- Schedule Tab -->
@@ -300,6 +309,264 @@
                 } else {
                     document.getElementById('setupSection').style.display = 'block';
                 }
+            },
+
+            renderAnalytics() {
+                const container = document.getElementById('analyticsContent');
+                const childrenArray = Object.values(this.children);
+                
+                if (childrenArray.length === 0) {
+                    container.innerHTML = '<div class="bg-white rounded-2xl shadow-lg p-8 text-center text-gray-400">Tambahkan anak terlebih dahulu untuk melihat statistik</div>';
+                    return;
+                }
+
+                let html = '<div class="space-y-4">';
+
+                // Time Period Selector
+                html += '<div class="bg-white rounded-2xl shadow-lg p-5">';
+                html += '<div class="flex items-center justify-between mb-4">';
+                html += '<h2 class="text-xl font-bold text-gray-800">📈 Periode</h2>';
+                html += '<select id="analytics-period" onchange="app.renderAnalytics()" class="px-4 py-2 border-2 border-gray-300 rounded-lg font-semibold">';
+                html += '<option value="7">7 Hari Terakhir</option>';
+                html += '<option value="14">14 Hari Terakhir</option>';
+                html += '<option value="30" selected>30 Hari Terakhir</option>';
+                html += '</select>';
+                html += '</div></div>';
+
+                // Chart 1: Perkembangan Waktu per Anak
+                html += '<div class="bg-white rounded-2xl shadow-lg p-5">';
+                html += '<h3 class="text-lg font-bold text-gray-800 mb-4">📊 Perkembangan Waktu Belajar</h3>';
+                html += '<canvas id="timeChart" style="max-height: 300px;"></canvas>';
+                html += '</div>';
+
+                // Chart 2: Pengeluaran Uang per Kategori
+                html += '<div class="bg-white rounded-2xl shadow-lg p-5">';
+                html += '<h3 class="text-lg font-bold text-gray-800 mb-4">💰 Pengeluaran per Kategori</h3>';
+                html += '<canvas id="expenseChart" style="max-height: 300px;"></canvas>';
+                html += '</div>';
+
+                // Chart 3: Perbandingan Antar Anak
+                html += '<div class="bg-white rounded-2xl shadow-lg p-5">';
+                html += '<h3 class="text-lg font-bold text-gray-800 mb-4">🏆 Perbandingan Antar Anak</h3>';
+                html += '<canvas id="comparisonChart" style="max-height: 300px;"></canvas>';
+                html += '</div>';
+
+                html += '</div>';
+                container.innerHTML = html;
+
+                // Render charts after DOM is ready
+                setTimeout(() => {
+                    this.renderTimeChart();
+                    this.renderExpenseChart();
+                    this.renderComparisonChart();
+                }, 100);
+            },
+
+            renderTimeChart() {
+                const canvas = document.getElementById('timeChart');
+                if (!canvas) return;
+
+                const ctx = canvas.getContext('2d');
+                const periodSelect = document.getElementById('analytics-period');
+                const days = parseInt(periodSelect ? periodSelect.value : 30);
+
+                const childrenArray = Object.values(this.children);
+                const datasets = [];
+
+                childrenArray.forEach(child => {
+                    const data = [];
+                    const now = new Date();
+                    
+                    for (let i = days - 1; i >= 0; i--) {
+                        const date = new Date(now);
+                        date.setDate(date.getDate() - i);
+                        const dateStr = date.toDateString();
+                        
+                        const dayHistory = this.history.filter(h => {
+                            return h.childId === child.id && 
+                                   h.type === 'time' && 
+                                   new Date(h.timestamp).toDateString() === dateStr;
+                        });
+                        
+                        const dayTotal = dayHistory.reduce((sum, h) => sum + (h.amount || 0), 0);
+                        data.push(dayTotal);
+                    }
+
+                    datasets.push({
+                        label: child.name,
+                        data: data,
+                        borderColor: child.color || '#667eea',
+                        backgroundColor: (child.color || '#667eea') + '20',
+                        tension: 0.4,
+                        fill: true
+                    });
+                });
+
+                const labels = [];
+                for (let i = days - 1; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    labels.push(date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
+                }
+
+                if (window.timeChartInstance) {
+                    window.timeChartInstance.destroy();
+                }
+
+                window.timeChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Menit'
+                                }
+                            }
+                        }
+                    }
+                });
+            },
+
+            renderExpenseChart() {
+                const canvas = document.getElementById('expenseChart');
+                if (!canvas) return;
+
+                const ctx = canvas.getContext('2d');
+                const childrenArray = Object.values(this.children);
+
+                const categoryTotals = {};
+                childrenArray.forEach(child => {
+                    if (child.expenses) {
+                        child.expenses.forEach(exp => {
+                            const cat = exp.category || 'lainnya';
+                            categoryTotals[cat] = (categoryTotals[cat] || 0) + exp.amount;
+                        });
+                    }
+                });
+
+                const labels = Object.keys(categoryTotals);
+                const data = Object.values(categoryTotals);
+                const colors = [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+                    '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+                ];
+
+                if (window.expenseChartInstance) {
+                    window.expenseChartInstance.destroy();
+                }
+
+                if (labels.length === 0) {
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#999';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Belum ada data pengeluaran', canvas.width / 2, canvas.height / 2);
+                    return;
+                }
+
+                window.expenseChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors.slice(0, labels.length)
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'right'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.label + ': Rp ' + context.parsed.toLocaleString('id-ID');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            },
+
+            renderComparisonChart() {
+                const canvas = document.getElementById('comparisonChart');
+                if (!canvas) return;
+
+                const ctx = canvas.getContext('2d');
+                const childrenArray = Object.values(this.children);
+
+                const labels = childrenArray.map(c => c.name);
+                const timeData = childrenArray.map(c => c.minutes || 0);
+                const moneyData = childrenArray.map(c => c.money || 0);
+                const colors = childrenArray.map(c => c.color || '#667eea');
+
+                if (window.comparisonChartInstance) {
+                    window.comparisonChartInstance.destroy();
+                }
+
+                window.comparisonChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Waktu (menit)',
+                                data: timeData,
+                                backgroundColor: colors.map(c => c + 'CC'),
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Saldo (ribuan Rp)',
+                                data: moneyData.map(m => m / 1000),
+                                backgroundColor: colors.map(c => c + '66'),
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Waktu (menit)'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Saldo (ribu Rp)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        }
+                    }
+                });
             },
 
             saveFirebaseConfig() {
@@ -1038,7 +1305,7 @@
             switchTab(tab) {
                 this.currentTab = tab;
                 
-                ['dashboard', 'schedule', 'tasks', 'manage', 'history', 'settings'].forEach(t => {
+                ['dashboard', 'analytics', 'schedule', 'tasks', 'manage', 'history', 'settings'].forEach(t => {
                     document.getElementById('content-' + t).style.display = 'none';
                     const btn = document.getElementById('tab-' + t);
                     if (btn) {
@@ -1059,6 +1326,9 @@
                 switch(this.currentTab) {
                     case 'dashboard':
                         this.renderDashboard();
+                        break;
+                    case 'analytics':
+                        this.renderAnalytics();
                         break;
                     case 'schedule':
                         this.renderSchedule();
