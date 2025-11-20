@@ -708,10 +708,20 @@
                     const desc = description || (amount > 0 ? 'Tambah Rp ' + amount.toLocaleString('id-ID') : 'Kurangi Rp ' + Math.abs(amount).toLocaleString('id-ID'));
                     this.addHistory(child.name + ': ' + desc, 'money', id, amount);
                     
-                    // Track expense if spending
                     if (amount < 0 && category) {
                         this.addExpense(id, Math.abs(amount), category, description);
                     }
+                }
+            },
+
+            updateMoneyManual(id, isAdd) {
+                const input = document.getElementById('manual-money-' + id);
+                const value = parseInt(input.value);
+                if (!isNaN(value) && value > 0) {
+                    this.updateMoney(id, isAdd ? value : -value, null, null);
+                    input.value = '';
+                } else if (input.value.trim() !== '') {
+                    alert('Masukkan angka yang valid!');
                 }
             },
 
